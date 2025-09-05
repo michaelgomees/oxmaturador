@@ -14,7 +14,77 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      saas_conexoes: {
+        Row: {
+          config: Json | null
+          created_at: string
+          id: string
+          nome: string
+          status: string
+          updated_at: string
+          usuario_id: string
+        }
+        Insert: {
+          config?: Json | null
+          created_at?: string
+          id?: string
+          nome: string
+          status?: string
+          updated_at?: string
+          usuario_id: string
+        }
+        Update: {
+          config?: Json | null
+          created_at?: string
+          id?: string
+          nome?: string
+          status?: string
+          updated_at?: string
+          usuario_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "saas_conexoes_usuario_id_fkey"
+            columns: ["usuario_id"]
+            isOneToOne: false
+            referencedRelation: "saas_usuarios"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      saas_usuarios: {
+        Row: {
+          chips_limite: number
+          created_at: string
+          email: string
+          id: string
+          nome: string
+          senha_hash: string
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          chips_limite?: number
+          created_at?: string
+          email: string
+          id?: string
+          nome: string
+          senha_hash: string
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          chips_limite?: number
+          created_at?: string
+          email?: string
+          id?: string
+          nome?: string
+          senha_hash?: string
+          status?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
