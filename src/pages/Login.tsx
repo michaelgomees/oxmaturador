@@ -1,12 +1,12 @@
 import { useState } from 'react';
-import { useNavigate, Link } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
-import { Eye, EyeOff, Mail, Lock, ArrowLeft } from 'lucide-react';
+import { Eye, EyeOff, Mail, Lock } from 'lucide-react';
 import oxLogo from '@/assets/ox-logo.png';
 // Temporariamente usando a logo atual até conseguir baixar a nova
 
@@ -23,15 +23,22 @@ const Login = () => {
     setIsLoading(true);
 
     try {
-      // Buscar usuário na tabela saas_usuarios
+      // Usar a função RPC para buscar usuário
       const { data: userData, error: userError } = await supabase
-        .from('saas_usuarios')
-        .select('*')
-        .eq('email', email)
-        .eq('status', 'ativo')
-        .single();
+        .rpc('get_user_for_login', { p_email: email });
 
-      if (userError || !userData) {
+      if (userError) {
+        console.error('Erro ao buscar usuário:', userError);
+        toast({
+          title: "Erro de Login",
+          description: "Erro interno do sistema.",
+          variant: "destructive"
+        });
+        setIsLoading(false);
+        return;
+      }
+
+      if (!userData || userData.length === 0) {
         toast({
           title: "Erro de Login",
           description: "Usuário não encontrado ou inativo.",
@@ -41,8 +48,10 @@ const Login = () => {
         return;
       }
 
+      const user = userData[0];
+
       // Verificar senha (comparando com o campo senha_hash da tabela)
-      if (password !== userData.senha_hash) {
+      if (password !== user.senha_hash) {
         toast({
           title: "Erro de Login",
           description: "Credenciais inválidas.",
@@ -54,16 +63,16 @@ const Login = () => {
 
       // Salvar dados do usuário no localStorage para sessão
       localStorage.setItem('ox-user-session', JSON.stringify({
-        id: userData.id,
-        nome: userData.nome,
-        email: userData.email,
-        chips_limite: userData.chips_limite,
-        status: userData.status
+        id: user.id,
+        nome: user.nome,
+        email: user.email,
+        chips_limite: user.chips_limite,
+        status: user.status
       }));
 
       toast({
         title: "Login realizado!",
-        description: `Bem-vindo, ${userData.nome}!`,
+        description: `Bem-vindo, ${user.nome}!`,
         variant: "default"
       });
 
@@ -86,14 +95,6 @@ const Login = () => {
       <div className="absolute inset-0 bg-grid-pattern opacity-5" />
       
       <div className="w-full max-w-md relative z-10">
-        {/* Back Button */}
-        <Link 
-          to="/" 
-          className="inline-flex items-center gap-2 text-muted-foreground hover:text-foreground mb-6 transition-colors"
-        >
-          <ArrowLeft size={16} />
-          Voltar para o Dashboard
-        </Link>
 
         <Card className="border-border/50 backdrop-blur-sm bg-card/95 shadow-xl">
           <CardHeader className="text-center space-y-4">
@@ -163,14 +164,6 @@ const Login = () => {
                 </div>
               </div>
 
-              {/* Demo Credentials Info */}
-              <div className="bg-muted/50 p-3 rounded-md text-sm">
-                <p className="font-medium text-muted-foreground mb-1">Credenciais de demonstração:</p>
-                <p className="text-xs text-muted-foreground">
-                  E-mail: carmen@email.com<br />
-                  Senha: avant25@
-                </p>
-              </div>
 
               {/* Submit Button */}
               <Button 
