@@ -23,7 +23,7 @@ const Login = () => {
     setIsLoading(true);
 
     try {
-      // Primeiro, verificar se o usuário existe na tabela saas_usuarios
+      // Buscar usuário na tabela saas_usuarios
       const { data: userData, error: userError } = await supabase
         .from('saas_usuarios')
         .select('*')
@@ -37,17 +37,18 @@ const Login = () => {
           description: "Usuário não encontrado ou inativo.",
           variant: "destructive"
         });
+        setIsLoading(false);
         return;
       }
 
-      // Para demonstração, vamos usar autenticação simples
-      // Em produção, você deve implementar hash de senha adequado
-      if (password !== 'admin123') { // Senha temporária para demo
+      // Verificar senha (comparando com o campo senha_hash da tabela)
+      if (password !== userData.senha_hash) {
         toast({
           title: "Erro de Login",
           description: "Credenciais inválidas.",
           variant: "destructive"
         });
+        setIsLoading(false);
         return;
       }
 
@@ -68,6 +69,7 @@ const Login = () => {
 
       navigate('/');
     } catch (error) {
+      console.error('Erro no login:', error);
       toast({
         title: "Erro",
         description: "Erro interno do sistema.",
@@ -165,8 +167,8 @@ const Login = () => {
               <div className="bg-muted/50 p-3 rounded-md text-sm">
                 <p className="font-medium text-muted-foreground mb-1">Credenciais de demonstração:</p>
                 <p className="text-xs text-muted-foreground">
-                  E-mail: admin@admin.com<br />
-                  Senha: admin123
+                  E-mail: carmen@email.com<br />
+                  Senha: avant25@
                 </p>
               </div>
 
