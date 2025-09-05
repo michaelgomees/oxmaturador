@@ -45,56 +45,79 @@ serve(async (req) => {
     }
 
     const base = baseUrl.replace(/\/$/, '');
-    // Try multiple known patterns
+    console.log('Evolution get-qr request:', { baseUrl, instanceName, base });
+    
+    // Endpoint oficial da Evolution API para obter QR Code
     const candidates = [
-      `${base}/instance/qr?instanceName=${encodeURIComponent(instanceName)}`,
+      `${base}/instance/connect/${encodeURIComponent(instanceName)}`,
       `${base}/instance/qrcode?instanceName=${encodeURIComponent(instanceName)}`,
       `${base}/instance/${encodeURIComponent(instanceName)}/qrcode`,
-      `${base}/instances/${encodeURIComponent(instanceName)}/qrcode`,
-      `${base}/instances/qr?instanceName=${encodeURIComponent(instanceName)}`,
-      `${base}/manager/instances/${encodeURIComponent(instanceName)}/qrcode`,
-      `${base}/manager/instances/qr?instanceName=${encodeURIComponent(instanceName)}`,
     ];
 
     let finalRes: Response | null = null;
     const attempts: Array<{url:string; method:string; status:number; contentType:string; bodySnippet:string}> = [];
+    
     for (const url of candidates) {
       try {
-        // GET attempt
+        console.log('Trying URL:', url);
+        
+        // GET attempt (mais comum para QR code)
         const { res: resGet, log: logGet } = await fetchWithLog(url, {
           method: 'GET',
           headers: { 'apikey': apiKey },
         });
         attempts.push(logGet);
-        if (resGet.ok) { finalRes = resGet; break; }
+        console.log('GET result:', logGet);
+        
+        if (resGet.ok) { 
+          finalRes = resGet; 
+          console.log('Success with GET:', url);
+          break; 
+        }
 
-        // POST attempt
+        // POST attempt apenas se GET falhar
         const { res: resPost, log: logPost } = await fetchWithLog(url, {
           method: 'POST',
           headers: { 'apikey': apiKey, 'Content-Type': 'application/json' },
           body: JSON.stringify({ instanceName }),
         });
         attempts.push(logPost);
-        if (resPost.ok) { finalRes = resPost; break; }
+        console.log('POST result:', logPost);
+        
+        if (resPost.ok) { 
+          finalRes = resPost; 
+          console.log('Success with POST:', url);
+          break; 
+        }
       } catch (e) {
-        // Log client-side error per URL
-        attempts.push({ url, method: 'GET', status: 0, contentType: '', bodySnippet: String(e) });
+        console.error('Error with URL:', url, e);
+        attempts.push({ url, method: 'ERROR', status: 0, contentType: '', bodySnippet: String(e) });
       }
     }
 
     if (!finalRes) {
+      console.error('All QR endpoints failed:', attempts);
       return new Response(
-        JSON.stringify({ success: false, message: 'Não foi possível obter QR Code da Evolution API', tried: attempts }),
+        JSON.stringify({ 
+          success: false, 
+          message: 'Não foi possível obter QR Code da Evolution API. Verifique se a instância existe e está funcionando.', 
+          tried: attempts,
+          instanceName 
+        }),
         { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
 
     const contentType = finalRes.headers.get('content-type') || '';
+    console.log('Final response content-type:', contentType);
+    
     if (contentType.includes('image/')) {
+      console.log('Response is image, converting to base64...');
       const arrayBuffer = await finalRes.arrayBuffer();
       const base64 = btoa(String.fromCharCode(...new Uint8Array(arrayBuffer)));
       const mime = contentType.split(';')[0];
       const dataUrl = `data:${mime};base64,${base64}`;
+      console.log('Image converted to data URL, length:', dataUrl.length);
       return new Response(
         JSON.stringify({ success: true, instanceName, qrCode: dataUrl, contentType: mime }),
         { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
@@ -103,7 +126,14 @@ serve(async (req) => {
 
     // Try JSON body with common fields
     let json: any = {};
-    try { json = await finalRes.json(); } catch { /* ignore */ }
+    try { 
+      const text = await finalRes.text();
+      console.log('Response text:', text.slice(0, 500));
+      json = JSON.parse(text); 
+      console.log('Parsed JSON:', json);
+    } catch (e) { 
+      console.error('Failed to parse JSON:', e);
+    }
 
     let qrCandidate: string | null = null;
     // Common Evolution API shapes
@@ -118,9 +148,17 @@ serve(async (req) => {
       json?.url ||
       null;
 
+    console.log('QR candidate found:', qrCandidate ? 'YES' : 'NO');
+
     if (!qrCandidate) {
+      console.error('No QR code found in response:', json);
       return new Response(
-        JSON.stringify({ success: false, message: 'Resposta inválida da Evolution API ao obter QR', json }),
+        JSON.stringify({ 
+          success: false, 
+          message: 'Resposta inválida da Evolution API ao obter QR. A instância pode não estar pronta para gerar QR Code.', 
+          json,
+          instanceName 
+        }),
         { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
@@ -130,6 +168,7 @@ serve(async (req) => {
       qrCandidate = `data:image/png;base64,${qrCandidate}`;
     }
 
+    console.log('Final QR code ready, length:', qrCandidate.length);
     return new Response(
       JSON.stringify({ success: true, instanceName, qrCode: qrCandidate }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
