@@ -28,18 +28,18 @@ export const useConnections = () => {
 
   // Buscar conexões do banco de dados
   const fetchConnections = async () => {
-    if (!userProfile) {
-      console.log('Usuário não autenticado, não buscando conexões');
+    if (!user?.id) {
+      console.log('Sem usuário autenticado, não buscando conexões');
       return;
     }
     
     setIsLoading(true);
     try {
-      console.log('Buscando conexões para usuário:', userProfile.id);
+      console.log('Buscando conexões para usuário:', user.id);
       const { data, error } = await supabase
         .from('saas_conexoes')
         .select('*')
-        .eq('usuario_id', userProfile.id)
+        .eq('usuario_id', user.id)
         .order('created_at', { ascending: false });
 
       if (error) throw error;
@@ -59,7 +59,7 @@ export const useConnections = () => {
 
   // Criar nova conexão
   const createConnection = async (connectionData: { nome: string; descricao?: string }) => {
-    if (!userProfile) return false;
+    if (!user?.id) return false;
 
     try {
       // Ler configuração da Evolution API (endpoint obrigatorio)
@@ -122,7 +122,7 @@ export const useConnections = () => {
         .insert({
           nome: connectionData.nome,
           config: config,
-          usuario_id: userProfile.id,
+          usuario_id: user.id,
           status: 'ativo',
         })
         .select()
@@ -163,14 +163,14 @@ export const useConnections = () => {
 
   // Atualizar conexão
   const updateConnection = async (connectionId: string, updates: Partial<Connection>) => {
-    if (!userProfile) return false;
+    if (!user?.id) return false;
 
     try {
       const { error } = await supabase
         .from('saas_conexoes')
         .update(updates)
         .eq('id', connectionId)
-        .eq('usuario_id', userProfile.id);
+        .eq('usuario_id', user.id);
 
       if (error) throw error;
 
@@ -194,14 +194,14 @@ export const useConnections = () => {
 
   // Deletar conexão
   const deleteConnection = async (connectionId: string) => {
-    if (!userProfile) return false;
+    if (!user?.id) return false;
 
     try {
       const { error } = await supabase
         .from('saas_conexoes')
         .delete()
         .eq('id', connectionId)
-        .eq('usuario_id', userProfile.id);
+        .eq('usuario_id', user.id);
 
       if (error) throw error;
 
@@ -320,10 +320,10 @@ export const useConnections = () => {
   };
 
   useEffect(() => {
-    if (userProfile) {
+    if (user?.id) {
       fetchConnections();
     }
-  }, [userProfile]);
+  }, [user?.id]);
 
   return {
     connections,
