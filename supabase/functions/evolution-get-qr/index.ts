@@ -53,10 +53,13 @@ serve(async (req) => {
     const base = baseUrl.replace(/\/$/, '');
     // Try multiple known patterns
     const candidates = [
-      `${base}/manager/instances/${encodeURIComponent(instanceName)}/qrcode`,
-      `${base}/manager/instances/qr?instanceName=${encodeURIComponent(instanceName)}`,
+      `${base}/instance/qr?instanceName=${encodeURIComponent(instanceName)}`,
+      `${base}/instance/qrcode?instanceName=${encodeURIComponent(instanceName)}`,
+      `${base}/instance/${encodeURIComponent(instanceName)}/qrcode`,
       `${base}/instances/${encodeURIComponent(instanceName)}/qrcode`,
       `${base}/instances/qr?instanceName=${encodeURIComponent(instanceName)}`,
+      `${base}/manager/instances/${encodeURIComponent(instanceName)}/qrcode`,
+      `${base}/manager/instances/qr?instanceName=${encodeURIComponent(instanceName)}`,
     ];
 
     let finalRes: Response | null = null;
@@ -89,16 +92,34 @@ serve(async (req) => {
     // Try JSON body with common fields
     let json: any = {};
     try { json = await finalRes.json(); } catch { /* ignore */ }
-    const qrCode = json.qrCode || json.qr || json.image || json.imageUrl || json.url || null;
-    if (!qrCode) {
+
+    let qrCandidate: string | null = null;
+    // Common Evolution API shapes
+    qrCandidate =
+      json?.qrcode?.base64 ||
+      json?.qrcode ||
+      json?.base64 ||
+      json?.qrCode ||
+      json?.qr ||
+      json?.image ||
+      json?.imageUrl ||
+      json?.url ||
+      null;
+
+    if (!qrCandidate) {
       return new Response(
-        JSON.stringify({ success: false, message: 'Resposta inválida da Evolution API ao obter QR' }),
+        JSON.stringify({ success: false, message: 'Resposta inválida da Evolution API ao obter QR', json }),
         { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
 
+    // Normalize to data URL if plain base64
+    if (!/^data:image\//i.test(qrCandidate) && /^(?:[A-Za-z0-9+/]+={0,2})$/.test(qrCandidate.replace(/\s+/g, ''))) {
+      qrCandidate = `data:image/png;base64,${qrCandidate}`;
+    }
+
     return new Response(
-      JSON.stringify({ success: true, instanceName, qrCode }),
+      JSON.stringify({ success: true, instanceName, qrCode: qrCandidate }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
   } catch (error) {
