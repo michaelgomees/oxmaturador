@@ -82,6 +82,13 @@ export const useConnections = () => {
         return false;
       }
 
+      const normalizeEndpoint = (value: string) => {
+        let url = String(value || '').trim();
+        if (!/^https?:\/\//i.test(url)) url = `https://${url}`;
+        return url.replace(/\/$/, '');
+      };
+      const baseUrl = normalizeEndpoint(apiConfig.endpoint);
+
       // Gerar nome da instância
       const sanitizedName = connectionData.nome
         .toLowerCase()
@@ -91,7 +98,7 @@ export const useConnections = () => {
 
       // Criar instância na Evolution via Edge Function
       const { data: evoCreate, error: evoErr } = await supabase.functions.invoke('evolution-create-instance', {
-        body: { baseUrl: apiConfig.endpoint, instanceName },
+        body: { baseUrl, instanceName },
       });
       if (evoErr || !evoCreate?.success) {
         console.error('Falha ao criar instância Evolution:', evoErr || evoCreate);
@@ -110,7 +117,7 @@ export const useConnections = () => {
         telefone: null,
         evolutionInstance: instanceName,
         evolutionConfig: {
-          endpoint: apiConfig.endpoint,
+          endpoint: baseUrl,
           instanceName: instanceName,
         },
       };
@@ -234,9 +241,15 @@ export const useConnections = () => {
 
       const instanceName = connection.config?.evolutionInstance || `ox_connection_${connectionId.slice(0, 8)}`;
 
+      const normalizeEndpoint = (value: string) => {
+        let url = String(value || '').trim();
+        if (!/^https?:\/\//i.test(url)) url = `https://${url}`;
+        return url.replace(/\/$/, '');
+      };
+
       // Criar instância na Evolution
       const { data: evoCreate, error: evoErr } = await supabase.functions.invoke('evolution-create-instance', {
-        body: { baseUrl: apiConfig.endpoint, instanceName },
+        body: { baseUrl: normalizeEndpoint(apiConfig.endpoint), instanceName },
       });
       if (evoErr || !evoCreate?.success) throw new Error('Falha ao criar instância na Evolution');
 
@@ -246,7 +259,7 @@ export const useConnections = () => {
         status: 'aguardando_qr',
         evolutionConfig: {
           ...(connection.config?.evolutionConfig || {}),
-          endpoint: apiConfig.endpoint,
+          endpoint: normalizeEndpoint(apiConfig.endpoint),
           instanceName,
         },
       };

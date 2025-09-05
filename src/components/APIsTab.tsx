@@ -114,8 +114,15 @@ export const APIsTab = () => {
       return;
     }
 
+    const normalizeEndpoint = (value: string) => {
+      let url = String(value || '').trim();
+      if (!/^https?:\/\//i.test(url)) url = `https://${url}`;
+      return url.replace(/\/$/, '');
+    };
+
     saveEvolutionAPI({
       ...evolutionAPI,
+      endpoint: normalizeEndpoint(evolutionAPI.endpoint),
       lastTest: new Date().toISOString()
     });
     
