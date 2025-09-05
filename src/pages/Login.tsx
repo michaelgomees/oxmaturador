@@ -170,9 +170,9 @@ const Login = () => {
 
           <CardContent>
             <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-              <TabsList className="grid w-full grid-cols-2">
+              <TabsList className="grid w-full grid-cols-1">
                 <TabsTrigger value="login">Login</TabsTrigger>
-                <TabsTrigger value="signup">Cadastro</TabsTrigger>
+                {/* <TabsTrigger value="signup">Cadastro</TabsTrigger> */}
               </TabsList>
               
               <TabsContent value="login" className="space-y-4 mt-4">
@@ -233,7 +233,7 @@ const Login = () => {
                 </form>
               </TabsContent>
 
-              <TabsContent value="signup" className="space-y-4 mt-4">
+              {/* <TabsContent value="signup" className="space-y-4 mt-4">
                 <div className="space-y-2 text-center">
                   <CardTitle className="text-xl">Criar Conta</CardTitle>
                   <CardDescription>
@@ -304,7 +304,7 @@ const Login = () => {
                     {isLoading ? "Criando conta..." : "Criar Conta"}
                   </Button>
                 </form>
-              </TabsContent>
+              </TabsContent> */}
             </Tabs>
 
             {/* Footer */}
