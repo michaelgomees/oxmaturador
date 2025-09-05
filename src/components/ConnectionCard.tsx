@@ -9,7 +9,7 @@ import {
   DropdownMenuItem, 
   DropdownMenuTrigger 
 } from "@/components/ui/dropdown-menu";
-import { MoreVertical, Play, Pause, Settings, MessageCircle, Bot, QrCode, Wifi, History, Thermometer, TrendingUp, Trash2 } from "lucide-react";
+import { MoreVertical, Play, Pause, Settings, MessageCircle, Bot, QrCode, Wifi, History, Thermometer, TrendingUp, Trash2, Network } from "lucide-react";
 import { useState, useEffect } from "react";
 import { ChipConfigModal } from "./ChipConfigModal";
 import { ConversationsModal } from "./ConversationsModal";
@@ -17,7 +17,7 @@ import { ConnectionTestModal } from "./ConnectionTestModal";
 import { ChipHistoryModal } from "./ChipHistoryModal";
 import { useToast } from "@/hooks/use-toast";
 import { useChipMonitoring } from "@/hooks/useChipMonitoring";
-import { useChips } from "@/hooks/useChips";
+import { useConnections } from "@/hooks/useConnections";
 import { 
   AlertDialog,
   AlertDialogAction,
@@ -29,34 +29,35 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 
-type ChipStatus = "active" | "idle" | "offline";
+type ConnectionStatus = "active" | "idle" | "offline";
 
-interface ChipData {
+interface ConnectionData {
   id: string;
   name: string;
-  status: ChipStatus;
+  status: ConnectionStatus;
   aiModel: string;
   conversations: number;
   lastActive: string;
+  phone?: string;
 }
 
-interface ChipCardProps {
-  chip: ChipData;
+interface ConnectionCardProps {
+  connection: ConnectionData;
   isSelected: boolean;
   onSelect: () => void;
   onGenerateQR?: () => void;
-  onChipUpdated?: () => void;
+  onConnectionUpdated?: () => void;
 }
 
 const statusConfig = {
   active: {
     color: "bg-secondary",
-    label: "Ativo",
+    label: "Conectado",
     textColor: "text-secondary"
   },
   idle: {
     color: "bg-accent",
-    label: "Inativo", 
+    label: "Aguardando", 
     textColor: "text-accent"
   },
   offline: {
@@ -95,7 +96,7 @@ const aiModelColors = {
   Gemini: "bg-accent/10 text-accent"
 };
 
-export const ChipCard = ({ chip, isSelected, onSelect, onGenerateQR, onChipUpdated }: ChipCardProps) => {
+export const ConnectionCard = ({ connection, isSelected, onSelect, onGenerateQR, onConnectionUpdated }: ConnectionCardProps) => {
   const [configModalOpen, setConfigModalOpen] = useState(false);
   const [conversationsModalOpen, setConversationsModalOpen] = useState(false);
   const [connectionTestModalOpen, setConnectionTestModalOpen] = useState(false);
@@ -103,55 +104,49 @@ export const ChipCard = ({ chip, isSelected, onSelect, onGenerateQR, onChipUpdat
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const { toast } = useToast();
   const { initializeChip, getChipMonitoring, simulateChipActivity } = useChipMonitoring();
-  const { deleteChip } = useChips();
+  const { deleteConnection } = useConnections();
   
-  const status = statusConfig[chip.status];
-  const modelColor = aiModelColors[chip.aiModel as keyof typeof aiModelColors] || "bg-muted text-muted-foreground";
-  const chipMonitoring = getChipMonitoring(chip.id);
+  const status = statusConfig[connection.status];
+  const modelColor = aiModelColors[connection.aiModel as keyof typeof aiModelColors] || "bg-muted text-muted-foreground";
+  const chipMonitoring = getChipMonitoring(connection.id);
 
-  // Inicializar monitoramento do chip
+  // Inicializar monitoramento da conexão
   useEffect(() => {
-    initializeChip(chip.id);
-  }, [chip.id, initializeChip]);
+    initializeChip(connection.id);
+  }, [connection.id, initializeChip]);
 
   // Simular atividade periodicamente para demonstração
   useEffect(() => {
-    if (chip.status === 'active') {
+    if (connection.status === 'active') {
       const interval = setInterval(() => {
         if (Math.random() > 0.7) { // 30% de chance de atividade a cada 5 segundos
-          simulateChipActivity(chip.id);
+          simulateChipActivity(connection.id);
         }
       }, 5000);
 
       return () => clearInterval(interval);
     }
-  }, [chip.status, chip.id, simulateChipActivity]);
+  }, [connection.status, connection.id, simulateChipActivity]);
 
   const handleToggleStatus = () => {
-    // Simular toggle do status do chip
-    const newStatus = chip.status === "active" ? "idle" : "active";
+    // Simular toggle do status da conexão
+    const newStatus = connection.status === "active" ? "idle" : "active";
     toast({
-      title: `Chip ${newStatus === "active" ? "ativado" : "pausado"}`,
-      description: `${chip.name} foi ${newStatus === "active" ? "ativado" : "pausado"} com sucesso.`
+      title: `Conexão ${newStatus === "active" ? "ativada" : "pausada"}`,
+      description: `${connection.name} foi ${newStatus === "active" ? "ativada" : "pausada"} com sucesso.`
     });
-    onChipUpdated?.();
+    onConnectionUpdated?.();
   };
 
-  // Buscar número do chip salvo no localStorage
-  const getChipPhone = () => {
-    const savedConfigs = localStorage.getItem('ox-chip-configs');
-    if (savedConfigs) {
-      const configs = JSON.parse(savedConfigs);
-      const chipConfig = configs.find((c: any) => c.id === chip.id);
-      return chipConfig?.phone || "+5511999999999";
-    }
-    return "+5511999999999";
+  // Buscar número da conexão
+  const getConnectionPhone = () => {
+    return connection.phone || "+5511999999999";
   };
 
-  const handleDeleteChip = async () => {
-    const success = await deleteChip(chip.id);
+  const handleDeleteConnection = async () => {
+    const success = await deleteConnection(connection.id);
     if (success) {
-      onChipUpdated?.();
+      onConnectionUpdated?.();
     }
     setDeleteDialogOpen(false);
   };
@@ -168,12 +163,12 @@ export const ChipCard = ({ chip, isSelected, onSelect, onGenerateQR, onChipUpdat
           <div className="flex items-center gap-3">
             <Avatar className="h-10 w-10">
               <AvatarFallback className="bg-gradient-to-br from-primary to-secondary text-white text-sm font-semibold">
-                {chip.name.split(' ').map(n => n[0]).join('').slice(0, 2)}
+                <Network className="w-5 h-5" />
               </AvatarFallback>
             </Avatar>
             <div>
-              <h3 className="font-semibold text-sm">{chip.name}</h3>
-              <p className="text-xs text-muted-foreground font-mono">{getChipPhone()}</p>
+              <h3 className="font-semibold text-sm">{connection.name}</h3>
+              <p className="text-xs text-muted-foreground font-mono">{getConnectionPhone()}</p>
               <div className="flex items-center gap-2 mt-1">
                 <div className={`w-2 h-2 rounded-full ${status.color} animate-pulse`} />
                 <span className={`text-xs font-medium ${status.textColor}`}>
@@ -211,15 +206,15 @@ export const ChipCard = ({ chip, isSelected, onSelect, onGenerateQR, onChipUpdat
                 Conversas
               </DropdownMenuItem>
               <DropdownMenuItem onClick={(e) => { e.stopPropagation(); handleToggleStatus(); }}>
-                {chip.status === "active" ? <Pause className="mr-2 h-4 w-4" /> : <Play className="mr-2 h-4 w-4" />}
-                {chip.status === "active" ? "Pausar" : "Ativar"}
+                {connection.status === "active" ? <Pause className="mr-2 h-4 w-4" /> : <Play className="mr-2 h-4 w-4" />}
+                {connection.status === "active" ? "Pausar" : "Ativar"}
               </DropdownMenuItem>
               <DropdownMenuItem 
                 onClick={(e) => { e.stopPropagation(); setDeleteDialogOpen(true); }}
                 className="text-destructive focus:text-destructive"
               >
                 <Trash2 className="mr-2 h-4 w-4" />
-                Excluir Chip
+                Excluir Conexão
               </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
@@ -233,7 +228,7 @@ export const ChipCard = ({ chip, isSelected, onSelect, onGenerateQR, onChipUpdat
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
                 <Thermometer className="w-3 h-3" />
-                <span className="text-xs text-muted-foreground">Maturação</span>
+                <span className="text-xs text-muted-foreground">Status</span>
               </div>
               <span className="text-xs font-medium">{Math.round(chipMonitoring.maturationPercentage)}%</span>
             </div>
@@ -264,14 +259,14 @@ export const ChipCard = ({ chip, isSelected, onSelect, onGenerateQR, onChipUpdat
         <div className="flex items-center gap-2">
           <Bot className="w-3 h-3" />
           <Badge variant="secondary" className={modelColor}>
-            {chip.aiModel}
+            {connection.aiModel}
           </Badge>
         </div>
 
         {/* Stats Expandidas */}
         <div className="grid grid-cols-3 gap-3 pt-2 border-t">
           <div className="text-center">
-            <p className="text-base font-semibold text-primary">{chipMonitoring?.totalMessages || chip.conversations}</p>
+            <p className="text-base font-semibold text-primary">{chipMonitoring?.totalMessages || connection.conversations}</p>
             <p className="text-xs text-muted-foreground">Mensagens</p>
           </div>
           <div className="text-center">
@@ -294,7 +289,7 @@ export const ChipCard = ({ chip, isSelected, onSelect, onGenerateQR, onChipUpdat
           <span>{chipMonitoring?.lastActivity ? 
             chipMonitoring.lastActivity.toLocaleString('pt-BR', { 
               day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' 
-            }) : chip.lastActive}
+            }) : connection.lastActive}
           </span>
         </div>
       </CardContent>
@@ -303,44 +298,44 @@ export const ChipCard = ({ chip, isSelected, onSelect, onGenerateQR, onChipUpdat
       <ChipConfigModal 
         open={configModalOpen}
         onOpenChange={setConfigModalOpen}
-        chipId={chip.id}
-        chipName={chip.name}
+        chipId={connection.id}
+        chipName={connection.name}
       />
       
       <ConversationsModal 
         open={conversationsModalOpen}
         onOpenChange={setConversationsModalOpen}
-        chipId={chip.id}
-        chipName={chip.name}
+        chipId={connection.id}
+        chipName={connection.name}
       />
 
       <ConnectionTestModal
         open={connectionTestModalOpen}
         onOpenChange={setConnectionTestModalOpen}
-        chipId={chip.id}
-        chipName={chip.name}
+        chipId={connection.id}
+        chipName={connection.name}
       />
 
       <ChipHistoryModal
         open={historyModalOpen}
         onOpenChange={setHistoryModalOpen}
-        chipId={chip.id}
-        chipName={chip.name}
+        chipId={connection.id}
+        chipName={connection.name}
       />
 
       {/* Dialog de confirmação de exclusão */}
       <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Excluir Chip</AlertDialogTitle>
+            <AlertDialogTitle>Excluir Conexão</AlertDialogTitle>
             <AlertDialogDescription>
-              Tem certeza que deseja excluir o chip "{chip.name}"? Esta ação não pode ser desfeita.
+              Tem certeza que deseja excluir a conexão "{connection.name}"? Esta ação não pode ser desfeita.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>Cancelar</AlertDialogCancel>
             <AlertDialogAction 
-              onClick={handleDeleteChip}
+              onClick={handleDeleteConnection}
               className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
             >
               Excluir

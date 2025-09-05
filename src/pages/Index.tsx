@@ -3,43 +3,43 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Plus, Bot, MessageCircle, Zap, Settings, BarChart3, QrCode, Link, Brain, GitBranch, Users } from "lucide-react";
+import { Plus, Bot, MessageCircle, Zap, Settings, BarChart3, QrCode, Link, Brain, GitBranch, Users, Network } from "lucide-react";
 import { Header } from "@/components/Header";
-import { ChipCard } from "@/components/ChipCard";
+import { ConnectionCard } from "@/components/ConnectionCard";
 import { StatsCard } from "@/components/StatsCard";
-import { CreateChipModal } from "@/components/CreateChipModal";
+import { CreateConnectionModal } from "@/components/CreateConnectionModal";
 import { QRCodeModal } from "@/components/QRCodeModal";
 import { AnalyticsModal } from "@/components/AnalyticsModal";
 import { useToast } from "@/hooks/use-toast";
-import { useChips } from "@/hooks/useChips";
+import { useConnections } from "@/hooks/useConnections";
 import { APIsTab } from "@/components/APIsTab";
 import { PromptsTab } from "@/components/PromptsTab";
 import { DadosTab } from "@/components/DadosTab";
 import { EnhancedMaturadorTab } from "@/components/EnhancedMaturadorTab";
 
 const Index = () => {
-  const [selectedChip, setSelectedChip] = useState<string | null>(null);
-  const [createChipModalOpen, setCreateChipModalOpen] = useState(false);
+  const [selectedConnection, setSelectedConnection] = useState<string | null>(null);
+  const [createConnectionModalOpen, setCreateConnectionModalOpen] = useState(false);
   const [qrCodeModalOpen, setQrCodeModalOpen] = useState(false);
-  const [selectedChipForQR, setSelectedChipForQR] = useState<{name: string, phone: string} | null>(null);
+  const [selectedConnectionForQR, setSelectedConnectionForQR] = useState<{name: string, phone: string} | null>(null);
   const [activeTab, setActiveTab] = useState("dashboard");
   const [analyticsModalOpen, setAnalyticsModalOpen] = useState(false);
   const { toast } = useToast();
-  const { chips, isLoading } = useChips();
+  const { connections, isLoading } = useConnections();
 
-  const handleGenerateQRCode = (chipName: string, chipPhone: string) => {
-    setSelectedChipForQR({ name: chipName, phone: chipPhone });
+  const handleGenerateQRCode = (connectionName: string, connectionPhone: string) => {
+    setSelectedConnectionForQR({ name: connectionName, phone: connectionPhone });
     setQrCodeModalOpen(true);
   };
 
-  const handleChipCreated = () => {
-    console.log('Chip criado, atualizando interface...');
-    // Os chips são automaticamente recarregados pelo hook useChips
+  const handleConnectionCreated = () => {
+    console.log('Conexão criada, atualizando interface...');
+    // As conexões são automaticamente recarregadas pelo hook useConnections
   };
 
-  // Estatísticas calculadas a partir dos chips reais
-  const activeChips = chips.filter(chip => chip.status === 'ativo').length;
-  const totalChips = chips.length;
+  // Estatísticas calculadas a partir das conexões reais
+  const activeConnections = connections.filter(connection => connection.status === 'ativo').length;
+  const totalConnections = connections.length;
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-background to-muted">
@@ -80,14 +80,14 @@ const Index = () => {
                 </h1>
                 <p className="text-xl text-muted-foreground max-w-2xl mx-auto">
                   Plataforma inteligente de automação conversacional com IA. 
-                  Crie, gerencie e monitore chips conversacionais autônomos.
+                  Crie, gerencie e monitore conexões WhatsApp autônomas.
                 </p>
               </div>
               
               <div className="flex gap-4 justify-center">
-                <Button size="lg" onClick={() => setCreateChipModalOpen(true)} className="hover:bg-primary/90 hover:scale-105 transition-all duration-300">
+                <Button size="lg" onClick={() => setCreateConnectionModalOpen(true)} className="hover:bg-primary/90 hover:scale-105 transition-all duration-300">
                   <Plus className="w-5 h-5 mr-2" />
-                  Criar Novo Chip
+                  Nova Conexão
                 </Button>
                 <Button size="lg" variant="outline" className="hover:bg-secondary/10 hover:border-secondary transition-all duration-300" onClick={() => setAnalyticsModalOpen(true)}>
                   <BarChart3 className="w-5 h-5 mr-2" />
@@ -99,10 +99,10 @@ const Index = () => {
             {/* Stats Overview */}
             <section className="grid grid-cols-1 md:grid-cols-4 gap-6">
               <StatsCard 
-                title="Chips Ativos"
-                value={activeChips.toString()}
-                description={`${totalChips} total`}
-                icon={<Bot className="w-5 h-5 text-primary" />}
+                title="Conexões Ativas"
+                value={activeConnections.toString()}
+                description={`${totalConnections} total`}
+                icon={<Network className="w-5 h-5 text-primary" />}
               />
               <StatsCard 
                 title="Conversas Hoje"
@@ -124,13 +124,13 @@ const Index = () => {
               />
             </section>
 
-            {/* Chips Grid */}
+            {/* Connections Grid */}
             <section className="space-y-6">
               <div className="flex items-center justify-between">
-                <h2 className="text-2xl font-semibold">Meus Chips</h2>
+                <h2 className="text-2xl font-semibold">Minhas Conexões</h2>
                 <div className="flex gap-2">
-                  <Badge variant="secondary">{totalChips} Total</Badge>
-                  <Badge variant="outline" className="text-secondary">{activeChips} Ativos</Badge>
+                  <Badge variant="secondary">{totalConnections} Total</Badge>
+                  <Badge variant="outline" className="text-secondary">{activeConnections} Ativas</Badge>
                 </div>
               </div>
               
@@ -148,44 +148,45 @@ const Index = () => {
                     </Card>
                   ))}
                 </div>
-              ) : chips.length === 0 ? (
+              ) : connections.length === 0 ? (
                 <div className="col-span-full text-center py-12">
-                  <p className="text-muted-foreground">Nenhum chip criado ainda. Crie seu primeiro chip!</p>
+                  <p className="text-muted-foreground">Nenhuma conexão criada ainda. Crie sua primeira conexão!</p>
                 </div>
               ) : (
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                  {chips.map((chip) => {
-                    console.log('Renderizando chip:', chip);
-                    const chipForCard = {
-                      id: chip.id,
-                      name: chip.nome,
-                      status: chip.config?.telefone ? 'active' as const : 'idle' as const,
-                      aiModel: chip.config?.aiModel || 'ChatGPT',
+                  {connections.map((connection) => {
+                    console.log('Renderizando conexão:', connection);
+                    const connectionForCard = {
+                      id: connection.id,
+                      name: connection.nome,
+                      status: connection.config?.telefone ? 'active' as const : 'idle' as const,
+                      aiModel: connection.config?.aiModel || 'ChatGPT',
                       conversations: 0, // Será implementado posteriormente
-                      lastActive: chip.config?.telefone ? 'Conectado' : 'Aguardando conexão'
+                      lastActive: connection.config?.telefone ? 'Conectado' : 'Aguardando conexão',
+                      phone: connection.config?.telefone
                     };
                     
                     return (
-                      <ChipCard
-                        key={chip.id}
-                        chip={chipForCard}
-                        isSelected={selectedChip === chip.id}
-                        onSelect={() => setSelectedChip(chip.id)}
-                        onGenerateQR={() => handleGenerateQRCode(chip.nome, chip.config?.telefone || 'Não conectado')}
-                        onChipUpdated={handleChipCreated}
+                      <ConnectionCard
+                        key={connection.id}
+                        connection={connectionForCard}
+                        isSelected={selectedConnection === connection.id}
+                        onSelect={() => setSelectedConnection(connection.id)}
+                        onGenerateQR={() => handleGenerateQRCode(connection.nome, connection.config?.telefone || 'Não conectado')}
+                        onConnectionUpdated={handleConnectionCreated}
                       />
                     );
                   })}
                   
-                  {/* Add New Chip Card */}
+                  {/* Add New Connection Card */}
                   <Card 
                     className="border-dashed border-2 hover:border-primary/50 transition-all duration-300 cursor-pointer group hover:scale-105"
-                    onClick={() => setCreateChipModalOpen(true)}
+                    onClick={() => setCreateConnectionModalOpen(true)}
                   >
                     <CardContent className="flex flex-col items-center justify-center h-full min-h-[200px] text-muted-foreground group-hover:text-primary transition-colors">
                       <Plus className="w-12 h-12 mb-4 group-hover:scale-110 transition-transform duration-300" />
-                      <h3 className="font-semibold">Criar Novo Chip</h3>
-                      <p className="text-sm text-center">Configure uma nova instância conversacional</p>
+                      <h3 className="font-semibold">Nova Conexão</h3>
+                      <p className="text-sm text-center">Configure uma nova conexão WhatsApp</p>
                     </CardContent>
                   </Card>
                 </div>
@@ -264,18 +265,18 @@ const Index = () => {
       </main>
 
       {/* Modals */}
-      <CreateChipModal 
-        open={createChipModalOpen}
-        onOpenChange={setCreateChipModalOpen}
-        onChipCreated={handleChipCreated}
+      <CreateConnectionModal 
+        open={createConnectionModalOpen}
+        onOpenChange={setCreateConnectionModalOpen}
+        onConnectionCreated={handleConnectionCreated}
       />
       
-      {selectedChipForQR && (
+      {selectedConnectionForQR && (
         <QRCodeModal 
           open={qrCodeModalOpen}
           onOpenChange={setQrCodeModalOpen}
-          chipName={selectedChipForQR.name}
-          chipPhone={selectedChipForQR.phone}
+          chipName={selectedConnectionForQR.name}
+          chipPhone={selectedConnectionForQR.phone}
         />
       )}
 

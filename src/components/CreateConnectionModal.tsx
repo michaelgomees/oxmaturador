@@ -4,29 +4,29 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { useChips } from "@/hooks/useChips";
-import { Loader2, Cpu } from "lucide-react";
+import { useConnections } from "@/hooks/useConnections";
+import { Loader2, Network } from "lucide-react";
 
-interface CreateChipModalProps {
+interface CreateConnectionModalProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  onChipCreated: () => void;
+  onConnectionCreated: () => void;
 }
 
-export const CreateChipModal = ({ open, onOpenChange, onChipCreated }: CreateChipModalProps) => {
+export const CreateConnectionModal = ({ open, onOpenChange, onConnectionCreated }: CreateConnectionModalProps) => {
   const [isLoading, setIsLoading] = useState(false);
   const [formData, setFormData] = useState({
     nome: "",
     descricao: ""
   });
-  const { createChip } = useChips();
+  const { createConnection } = useConnections();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
 
     try {
-      const success = await createChip({
+      const success = await createConnection({
         nome: formData.nome,
         descricao: formData.descricao
       });
@@ -37,11 +37,11 @@ export const CreateChipModal = ({ open, onOpenChange, onChipCreated }: CreateChi
           descricao: ""
         });
         
-        onChipCreated();
+        onConnectionCreated();
         onOpenChange(false);
       }
     } catch (error) {
-      console.error('Erro ao criar chip:', error);
+      console.error('Erro ao criar conexão:', error);
     } finally {
       setIsLoading(false);
     }
@@ -52,21 +52,21 @@ export const CreateChipModal = ({ open, onOpenChange, onChipCreated }: CreateChi
       <DialogContent className="sm:max-w-[500px]">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
-            <Cpu className="w-5 h-5 text-primary" />
-            Cadastrar Novo Chip
+            <Network className="w-5 h-5 text-primary" />
+            Nova Conexão WhatsApp
           </DialogTitle>
           <DialogDescription>
-            Configure uma nova instância conversacional. O telefone será conectado via QR code.
+            Configure uma nova conexão com o WhatsApp via Evolution API. O QR Code será gerado após a criação.
           </DialogDescription>
         </DialogHeader>
         
         <form onSubmit={handleSubmit} className="space-y-6">
           <div className="space-y-4">
             <div className="space-y-2">
-              <Label htmlFor="nome">Nome do Chip</Label>
+              <Label htmlFor="nome">Nome da Conexão</Label>
               <Input
                 id="nome"
-                placeholder="Ex: Alex Marketing"
+                placeholder="Ex: WhatsApp Principal"
                 value={formData.nome}
                 onChange={(e) => setFormData({ ...formData, nome: e.target.value })}
                 required
@@ -77,7 +77,7 @@ export const CreateChipModal = ({ open, onOpenChange, onChipCreated }: CreateChi
               <Label htmlFor="descricao">Descrição (Opcional)</Label>
               <Textarea
                 id="descricao"
-                placeholder="Descreva brevemente o propósito deste chip (ex: Responsável pelo atendimento de vendas)"
+                placeholder="Descreva brevemente o propósito desta conexão (ex: Atendimento ao cliente)"
                 value={formData.descricao}
                 onChange={(e) => setFormData({ ...formData, descricao: e.target.value })}
                 rows={3}
@@ -96,7 +96,7 @@ export const CreateChipModal = ({ open, onOpenChange, onChipCreated }: CreateChi
                   Criando...
                 </>
               ) : (
-                "Criar Chip"
+                "Criar Conexão"
               )}
             </Button>
           </DialogFooter>
