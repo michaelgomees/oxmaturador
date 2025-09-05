@@ -2,57 +2,38 @@ import { useState, useEffect } from "react";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { useToast } from "@/hooks/use-toast";
+aimport { useToast } from "@/hooks/use-toast";
 import { Loader2, QrCode, CheckCircle, AlertCircle, RefreshCw } from "lucide-react";
+import { useConnections } from "@/hooks/useConnections";
 
 interface QRCodeModalProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
+  chipId: string;
   chipName: string;
-  chipPhone: string;
+  chipPhone?: string;
 }
 
 type QRStatus = "loading" | "waiting" | "connected" | "error";
 
-export const QRCodeModal = ({ open, onOpenChange, chipName, chipPhone }: QRCodeModalProps) => {
+export const QRCodeModal = ({ open, onOpenChange, chipId, chipName, chipPhone }: QRCodeModalProps) => {
   const [qrStatus, setQrStatus] = useState<QRStatus>("loading");
   const [qrCodeUrl, setQrCodeUrl] = useState<string>("");
   const [countdown, setCountdown] = useState(60);
   const { toast } = useToast();
+  const { getConnectionQRCode } = useConnections();
 
   const generateQRCode = async () => {
     setQrStatus("loading");
     setCountdown(60);
-    
     try {
-      // Simulação de chamada para Evolution API - substituir pela integração real
-      await new Promise(resolve => setTimeout(resolve, 2000));
-      
-      // QR Code simulado - na implementação real virá da Evolution API
-      const mockQRCode = "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg==";
-      
-      setQrCodeUrl(mockQRCode);
-      setQrStatus("waiting");
-      
-      // Simular mudança de status após alguns segundos
-      setTimeout(() => {
-        const isConnected = Math.random() > 0.3; // 70% chance de sucesso
-        if (isConnected) {
-          setQrStatus("connected");
-          toast({
-            title: "WhatsApp conectado!",
-            description: `${chipName} foi conectado com sucesso ao WhatsApp.`,
-          });
-        } else {
-          setQrStatus("error");
-          toast({
-            title: "Falha na conexão",
-            description: "QR Code expirou. Clique em 'Gerar Novo QR Code' para tentar novamente.",
-            variant: "destructive",
-          });
-        }
-      }, 8000);
-      
+      const result = await getConnectionQRCode(chipId);
+      if (result?.qrCode) {
+        setQrCodeUrl(result.qrCode);
+        setQrStatus("waiting");
+      } else {
+        setQrStatus("error");
+      }
     } catch (error) {
       setQrStatus("error");
       toast({

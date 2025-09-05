@@ -21,14 +21,14 @@ const Index = () => {
   const [selectedConnection, setSelectedConnection] = useState<string | null>(null);
   const [createConnectionModalOpen, setCreateConnectionModalOpen] = useState(false);
   const [qrCodeModalOpen, setQrCodeModalOpen] = useState(false);
-  const [selectedConnectionForQR, setSelectedConnectionForQR] = useState<{name: string, phone: string} | null>(null);
+  const [selectedConnectionForQR, setSelectedConnectionForQR] = useState<{id: string, name: string, phone: string} | null>(null);
   const [activeTab, setActiveTab] = useState("dashboard");
   const [analyticsModalOpen, setAnalyticsModalOpen] = useState(false);
   const { toast } = useToast();
   const { connections, isLoading } = useConnections();
 
-  const handleGenerateQRCode = (connectionName: string, connectionPhone: string) => {
-    setSelectedConnectionForQR({ name: connectionName, phone: connectionPhone });
+  const handleGenerateQRCode = (id: string, connectionName: string, connectionPhone: string) => {
+    setSelectedConnectionForQR({ id, name: connectionName, phone: connectionPhone });
     setQrCodeModalOpen(true);
   };
 
@@ -166,16 +166,16 @@ const Index = () => {
                       phone: connection.config?.telefone
                     };
                     
-                    return (
-                      <ConnectionCard
-                        key={connection.id}
-                        connection={connectionForCard}
-                        isSelected={selectedConnection === connection.id}
-                        onSelect={() => setSelectedConnection(connection.id)}
-                        onGenerateQR={() => handleGenerateQRCode(connection.nome, connection.config?.telefone || 'Não conectado')}
-                        onConnectionUpdated={handleConnectionCreated}
-                      />
-                    );
+                      return (
+                        <ConnectionCard
+                          key={connection.id}
+                          connection={connectionForCard}
+                          isSelected={selectedConnection === connection.id}
+                          onSelect={() => setSelectedConnection(connection.id)}
+                          onGenerateQR={() => handleGenerateQRCode(connection.id, connection.nome, connection.config?.telefone || 'Não conectado')}
+                          onConnectionUpdated={handleConnectionCreated}
+                        />
+                      );
                   })}
                   
                   {/* Add New Connection Card */}
@@ -275,6 +275,7 @@ const Index = () => {
         <QRCodeModal 
           open={qrCodeModalOpen}
           onOpenChange={setQrCodeModalOpen}
+          chipId={selectedConnectionForQR.id}
           chipName={selectedConnectionForQR.name}
           chipPhone={selectedConnectionForQR.phone}
         />

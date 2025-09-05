@@ -62,28 +62,68 @@ export const useConnections = () => {
     if (!userProfile) return false;
 
     try {
+      // Ler configuração da Evolution API (endpoint obrigatorio)
+      const evolutionConfigStr = localStorage.getItem('ox-evolution-api');
+      if (!evolutionConfigStr) {
+        toast({
+          title: "Configuração da Evolution ausente",
+          description: "Defina o endpoint da Evolution em APIs > Evolution API.",
+          variant: "destructive",
+        });
+        return false;
+      }
+      const apiConfig = JSON.parse(evolutionConfigStr);
+      if (!apiConfig.endpoint) {
+        toast({
+          title: "Endpoint não configurado",
+          description: "Informe o endpoint da Evolution API antes de criar a conexão.",
+          variant: "destructive",
+        });
+        return false;
+      }
+
+      // Gerar nome da instância
+      const sanitizedName = connectionData.nome
+        .toLowerCase()
+        .replace(/[^a-z0-9]+/g, '_')
+        .replace(/^_+|_+$/g, '');
+      const instanceName = `ox_${sanitizedName || 'connection'}_${Date.now().toString().slice(-6)}`;
+
+      // Criar instância na Evolution via Edge Function
+      const { data: evoCreate, error: evoErr } = await supabase.functions.invoke('evolution-create-instance', {
+        body: { baseUrl: apiConfig.endpoint, instanceName },
+      });
+      if (evoErr || !evoCreate?.success) {
+        console.error('Falha ao criar instância Evolution:', evoErr || evoCreate);
+        toast({
+          title: "Erro ao criar instância",
+          description: "Não foi possível criar a instância no Evolution.",
+          variant: "destructive",
+        });
+        return false;
+      }
+
       const config = {
         descricao: connectionData.descricao || '',
         aiModel: 'ChatGPT',
-        status: 'aguardando_conexao',
+        status: 'aguardando_qr',
         telefone: null,
-        evolutionInstance: null,
+        evolutionInstance: instanceName,
         evolutionConfig: {
-          endpoint: '',
-          apiKey: '',
-          instanceName: `instance_${Date.now()}`
-        }
+          endpoint: apiConfig.endpoint,
+          instanceName: instanceName,
+        },
       };
 
-      console.log('Criando nova conexão:', connectionData);
-      
+      console.log('Criando nova conexão e salvando no banco:', connectionData);
+
       const { data, error } = await supabase
         .from('saas_conexoes')
         .insert({
           nome: connectionData.nome,
           config: config,
           usuario_id: userProfile.id,
-          status: 'ativo'
+          status: 'ativo',
         })
         .select()
         .single();
@@ -92,19 +132,18 @@ export const useConnections = () => {
 
       toast({
         title: "Conexão criada com sucesso!",
-        description: `${connectionData.nome} foi criada e está pronta para configuração.`,
+        description: `${connectionData.nome} foi criada e está pronta para leitura do QR Code.`,
       });
 
-      // Atualizar a lista
       if (data) {
         setConnections(prev => [data, ...prev]);
       }
-      
+
       await fetchConnections();
       return true;
     } catch (error: any) {
       console.error('Erro ao criar conexão:', error);
-      
+
       if (error.message?.includes('Limite de chips atingido')) {
         toast({
           title: "Limite de conexões atingido",
@@ -187,46 +226,51 @@ export const useConnections = () => {
   // Criar instância no Evolution API
   const createEvolutionInstance = async (connectionId: string) => {
     try {
-      // Obter configuração da Evolution API do localStorage
-      const evolutionConfig = localStorage.getItem('ox-evolution-api');
-      if (!evolutionConfig) {
-        throw new Error('Configuração da Evolution API não encontrada');
-      }
-
-      const apiConfig = JSON.parse(evolutionConfig);
-      const instanceName = `ox_connection_${connectionId.slice(0, 8)}`;
-
-      // Simular criação da instância (integração real seria aqui)
-      const mockQRCode = `https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=https://wa.me/qr/${instanceName}`;
-      
-      // Atualizar a conexão com os dados da instância
+      const evolutionConfigStr = localStorage.getItem('ox-evolution-api');
+      if (!evolutionConfigStr) throw new Error('Configuração da Evolution API não encontrada');
+      const apiConfig = JSON.parse(evolutionConfigStr);
       const connection = connections.find(c => c.id === connectionId);
-      if (connection) {
-        const updatedConfig = {
-          ...connection.config,
-          evolutionInstance: instanceName,
-          status: 'aguardando_qr',
-          evolutionConfig: {
-            ...connection.config.evolutionConfig,
-            endpoint: apiConfig.endpoint,
-            apiKey: apiConfig.apiKey,
-            instanceName: instanceName
-          }
-        };
+      if (!connection) throw new Error('Conexão não encontrada');
 
-        await updateConnection(connectionId, { config: updatedConfig });
+      const instanceName = connection.config?.evolutionInstance || `ox_connection_${connectionId.slice(0, 8)}`;
 
-        toast({
-          title: "Instância criada",
-          description: "Instância Evolution criada. Escaneie o QR Code para conectar.",
-        });
+      // Criar instância na Evolution
+      const { data: evoCreate, error: evoErr } = await supabase.functions.invoke('evolution-create-instance', {
+        body: { baseUrl: apiConfig.endpoint, instanceName },
+      });
+      if (evoErr || !evoCreate?.success) throw new Error('Falha ao criar instância na Evolution');
 
-        return {
+      const updatedConfig = {
+        ...connection.config,
+        evolutionInstance: instanceName,
+        status: 'aguardando_qr',
+        evolutionConfig: {
+          ...(connection.config?.evolutionConfig || {}),
+          endpoint: apiConfig.endpoint,
           instanceName,
-          qrCode: mockQRCode,
-          status: 'connecting' as const
-        };
+        },
+      };
+
+      await updateConnection(connectionId, { config: updatedConfig });
+
+      toast({
+        title: "Instância criada",
+        description: "Instância Evolution criada. Escaneie o QR Code para conectar.",
+      });
+
+      // Obter QR Code imediatamente
+      const { data: evoQR, error: qrErr } = await supabase.functions.invoke('evolution-get-qr', {
+        body: { baseUrl: apiConfig.endpoint, instanceName },
+      });
+      if (qrErr || !evoQR?.success) {
+        return { instanceName, qrCode: '', status: 'connecting' as const };
       }
+
+      return {
+        instanceName,
+        qrCode: evoQR.qrCode as string,
+        status: 'connecting' as const,
+      };
     } catch (error) {
       console.error('Erro ao criar instância Evolution:', error);
       toast({
@@ -241,16 +285,38 @@ export const useConnections = () => {
   // Obter QR Code de uma conexão
   const getConnectionQRCode = async (connectionId: string) => {
     const connection = connections.find(c => c.id === connectionId);
-    if (!connection?.config?.evolutionInstance) {
+    if (!connection) return null;
+
+    const endpoint = connection.config?.evolutionConfig?.endpoint;
+    const instanceName = connection.config?.evolutionInstance;
+
+    if (!instanceName) {
       return await createEvolutionInstance(connectionId);
     }
 
-    // Simular busca do QR Code existente
-    return {
-      instanceName: connection.config.evolutionInstance,
-      qrCode: `https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=https://wa.me/qr/${connection.config.evolutionInstance}`,
-      status: 'connecting' as const
-    };
+    try {
+      const { data, error } = await supabase.functions.invoke('evolution-get-qr', {
+        body: { baseUrl: endpoint, instanceName },
+      });
+
+      if (error || !data?.success) {
+        throw new Error('Falha ao obter QR');
+      }
+
+      return {
+        instanceName,
+        qrCode: data.qrCode as string,
+        status: 'connecting' as const,
+      };
+    } catch (err) {
+      console.error('Erro ao obter QR da Evolution:', err);
+      toast({
+        title: "Erro ao obter QR",
+        description: "Não foi possível obter o QR Code. Tente novamente.",
+        variant: "destructive",
+      });
+      return null;
+    }
   };
 
   useEffect(() => {
