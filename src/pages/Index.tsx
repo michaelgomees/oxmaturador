@@ -11,38 +11,11 @@ import { CreateChipModal } from "@/components/CreateChipModal";
 import { QRCodeModal } from "@/components/QRCodeModal";
 import { AnalyticsModal } from "@/components/AnalyticsModal";
 import { useToast } from "@/hooks/use-toast";
+import { useChips } from "@/hooks/useChips";
 import { APIsTab } from "@/components/APIsTab";
 import { PromptsTab } from "@/components/PromptsTab";
 import { DadosTab } from "@/components/DadosTab";
 import { EnhancedMaturadorTab } from "@/components/EnhancedMaturadorTab";
-
-// Mock data para demonstração
-const mockChips = [
-  {
-    id: "1",
-    name: "Alex Marketing",
-    status: "active" as const,
-    aiModel: "ChatGPT",
-    conversations: 47,
-    lastActive: "2 min atrás"
-  },
-  {
-    id: "2", 
-    name: "Sofia Suporte",
-    status: "active" as const,
-    aiModel: "Claude",
-    conversations: 23,
-    lastActive: "5 min atrás"
-  },
-  {
-    id: "3",
-    name: "João Vendas",
-    status: "idle" as const,
-    aiModel: "Gemini",
-    conversations: 12,
-    lastActive: "1h atrás"
-  }
-];
 
 const Index = () => {
   const [selectedChip, setSelectedChip] = useState<string | null>(null);
@@ -52,6 +25,7 @@ const Index = () => {
   const [activeTab, setActiveTab] = useState("dashboard");
   const [analyticsModalOpen, setAnalyticsModalOpen] = useState(false);
   const { toast } = useToast();
+  const { chips, isLoading } = useChips();
 
   const handleGenerateQRCode = (chipName: string, chipPhone: string) => {
     setSelectedChipForQR({ name: chipName, phone: chipPhone });
@@ -59,12 +33,12 @@ const Index = () => {
   };
 
   const handleChipCreated = () => {
-    // Recarregar lista de chips ou atualizar estado
-    toast({
-      title: "Lista atualizada",
-      description: "A lista de chips foi atualizada com sucesso.",
-    });
+    // Os chips são automaticamente recarregados pelo hook useChips
   };
+
+  // Estatísticas calculadas a partir dos chips reais
+  const activeChips = chips.filter(chip => chip.status === 'ativo').length;
+  const totalChips = chips.length;
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-background to-muted">
@@ -125,26 +99,26 @@ const Index = () => {
             <section className="grid grid-cols-1 md:grid-cols-4 gap-6">
               <StatsCard 
                 title="Chips Ativos"
-                value="2"
-                description="+1 esta semana"
+                value={activeChips.toString()}
+                description={`${totalChips} total`}
                 icon={<Bot className="w-5 h-5 text-primary" />}
               />
               <StatsCard 
                 title="Conversas Hoje"
-                value="89"
-                description="+12% vs ontem"
+                value="0"
+                description="Aguardando dados"
                 icon={<MessageCircle className="w-5 h-5 text-secondary" />}
               />
               <StatsCard 
                 title="Taxa de Resposta"
-                value="94%"
-                description="Média 7 dias"
+                value="0%"
+                description="Aguardando dados"
                 icon={<Zap className="w-5 h-5 text-accent" />}
               />
               <StatsCard 
                 title="Eficiência IA"
-                value="98.2%"
-                description="Uptime mensal"
+                value="100%"
+                description="Sistema ativo"
                 icon={<Settings className="w-5 h-5 text-primary" />}
               />
             </section>
@@ -154,35 +128,62 @@ const Index = () => {
               <div className="flex items-center justify-between">
                 <h2 className="text-2xl font-semibold">Meus Chips</h2>
                 <div className="flex gap-2">
-                  <Badge variant="secondary">3 Total</Badge>
-                  <Badge variant="outline" className="text-secondary">2 Ativos</Badge>
+                  <Badge variant="secondary">{totalChips} Total</Badge>
+                  <Badge variant="outline" className="text-secondary">{activeChips} Ativos</Badge>
                 </div>
               </div>
               
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                {mockChips.map((chip) => (
-                 <ChipCard
-                    key={chip.id}
-                    chip={chip}
-                    isSelected={selectedChip === chip.id}
-                    onSelect={() => setSelectedChip(chip.id)}
-                    onGenerateQR={() => handleGenerateQRCode(chip.name, "+5511999999999")}
-                    onChipUpdated={handleChipCreated}
-                  />
-                ))}
-                
-                {/* Add New Chip Card */}
-                <Card 
-                  className="border-dashed border-2 hover:border-primary/50 transition-all duration-300 cursor-pointer group hover:scale-105"
-                  onClick={() => setCreateChipModalOpen(true)}
-                >
-                  <CardContent className="flex flex-col items-center justify-center h-full min-h-[200px] text-muted-foreground group-hover:text-primary transition-colors">
-                    <Plus className="w-12 h-12 mb-4 group-hover:scale-110 transition-transform duration-300" />
-                    <h3 className="font-semibold">Criar Novo Chip</h3>
-                    <p className="text-sm text-center">Configure uma nova instância conversacional</p>
-                  </CardContent>
-                </Card>
-              </div>
+              {isLoading ? (
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                  {[1, 2, 3].map((i) => (
+                    <Card key={i} className="h-[200px] animate-pulse">
+                      <CardContent className="p-6">
+                        <div className="space-y-4">
+                          <div className="h-4 bg-muted rounded w-3/4"></div>
+                          <div className="h-3 bg-muted rounded w-1/2"></div>
+                          <div className="h-3 bg-muted rounded w-2/3"></div>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  ))}
+                </div>
+              ) : (
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                  {chips.map((chip) => {
+                    const chipForCard = {
+                      id: chip.id,
+                      name: chip.nome,
+                      status: chip.status === 'ativo' ? 'active' as const : 'idle' as const,
+                      aiModel: chip.config?.aiModel || 'ChatGPT',
+                      conversations: 0, // Será implementado posteriormente
+                      lastActive: new Date(chip.updated_at).toLocaleDateString('pt-BR')
+                    };
+                    
+                    return (
+                      <ChipCard
+                        key={chip.id}
+                        chip={chipForCard}
+                        isSelected={selectedChip === chip.id}
+                        onSelect={() => setSelectedChip(chip.id)}
+                        onGenerateQR={() => handleGenerateQRCode(chip.nome, chip.config?.telefone || '')}
+                        onChipUpdated={handleChipCreated}
+                      />
+                    );
+                  })}
+                  
+                  {/* Add New Chip Card */}
+                  <Card 
+                    className="border-dashed border-2 hover:border-primary/50 transition-all duration-300 cursor-pointer group hover:scale-105"
+                    onClick={() => setCreateChipModalOpen(true)}
+                  >
+                    <CardContent className="flex flex-col items-center justify-center h-full min-h-[200px] text-muted-foreground group-hover:text-primary transition-colors">
+                      <Plus className="w-12 h-12 mb-4 group-hover:scale-110 transition-transform duration-300" />
+                      <h3 className="font-semibold">Criar Novo Chip</h3>
+                      <p className="text-sm text-center">Configure uma nova instância conversacional</p>
+                    </CardContent>
+                  </Card>
+                </div>
+              )}
             </section>
 
             {/* Quick Actions */}
@@ -236,16 +237,6 @@ const Index = () => {
               </div>
             </section>
 
-            {/* Connection Notice */}
-            <section className="bg-primary/10 border border-primary/20 rounded-lg p-6 text-center">
-              <h3 className="font-semibold text-foreground mb-2">
-                Conecte ao Supabase para Funcionalidade Completa
-              </h3>
-              <p className="text-sm text-muted-foreground mb-4">
-                Para implementar autenticação, banco de dados, integração com Evolution API e modelos de IA, 
-                conecte seu projeto ao Supabase usando nossa integração nativa.
-              </p>
-            </section>
           </TabsContent>
 
           <TabsContent value="apis" className="mt-8">

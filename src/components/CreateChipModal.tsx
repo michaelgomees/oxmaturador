@@ -4,8 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { useToast } from "@/hooks/use-toast";
+import { useChips } from "@/hooks/useChips";
 import { Loader2, Cpu } from "lucide-react";
 
 interface CreateChipModalProps {
@@ -17,39 +16,35 @@ interface CreateChipModalProps {
 export const CreateChipModal = ({ open, onOpenChange, onChipCreated }: CreateChipModalProps) => {
   const [isLoading, setIsLoading] = useState(false);
   const [formData, setFormData] = useState({
-    name: "",
-    phone: "",
-    description: ""
+    nome: "",
+    telefone: "",
+    descricao: ""
   });
-  const { toast } = useToast();
+  const { createChip } = useChips();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
 
     try {
-      // Simulação de chamada API - substituir pela integração real com Supabase
-      await new Promise(resolve => setTimeout(resolve, 2000));
-      
-      toast({
-        title: "Chip criado com sucesso!",
-        description: `${formData.name} foi cadastrado e está pronto para uso.`,
+      const success = await createChip({
+        nome: formData.nome,
+        telefone: formData.telefone,
+        descricao: formData.descricao
       });
       
-      setFormData({
-        name: "",
-        phone: "",
-        description: ""
-      });
-      
-      onChipCreated();
-      onOpenChange(false);
+      if (success) {
+        setFormData({
+          nome: "",
+          telefone: "",
+          descricao: ""
+        });
+        
+        onChipCreated();
+        onOpenChange(false);
+      }
     } catch (error) {
-      toast({
-        title: "Erro ao criar chip",
-        description: "Ocorreu um erro inesperado. Tente novamente.",
-        variant: "destructive",
-      });
+      console.error('Erro ao criar chip:', error);
     } finally {
       setIsLoading(false);
     }
@@ -71,35 +66,35 @@ export const CreateChipModal = ({ open, onOpenChange, onChipCreated }: CreateChi
         <form onSubmit={handleSubmit} className="space-y-6">
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">
-              <Label htmlFor="name">Nome do Chip</Label>
+              <Label htmlFor="nome">Nome do Chip</Label>
               <Input
-                id="name"
+                id="nome"
                 placeholder="Ex: Alex Marketing"
-                value={formData.name}
-                onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                value={formData.nome}
+                onChange={(e) => setFormData({ ...formData, nome: e.target.value })}
                 required
               />
             </div>
             
             <div className="space-y-2">
-              <Label htmlFor="phone">Número de Telefone</Label>
+              <Label htmlFor="telefone">Número de Telefone</Label>
               <Input
-                id="phone"
+                id="telefone"
                 placeholder="Ex: +5511999999999"
-                value={formData.phone}
-                onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
+                value={formData.telefone}
+                onChange={(e) => setFormData({ ...formData, telefone: e.target.value })}
                 required
               />
             </div>
           </div>
           
           <div className="space-y-2">
-            <Label htmlFor="description">Descrição (Opcional)</Label>
+            <Label htmlFor="descricao">Descrição (Opcional)</Label>
             <Textarea
-              id="description"
+              id="descricao"
               placeholder="Descreva brevemente o propósito deste chip (ex: Responsável pelo atendimento de vendas)"
-              value={formData.description}
-              onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+              value={formData.descricao}
+              onChange={(e) => setFormData({ ...formData, descricao: e.target.value })}
               rows={3}
             />
           </div>
