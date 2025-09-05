@@ -44,17 +44,20 @@ export const useChips = () => {
     }
   };
 
-  const createChip = async (chipData: { nome: string; telefone: string; descricao?: string }) => {
+  const createChip = async (chipData: { nome: string; descricao?: string }) => {
     if (!user) return false;
 
     try {
       const config = {
-        telefone: chipData.telefone,
         descricao: chipData.descricao || '',
         aiModel: 'ChatGPT',
-        status: 'idle'
+        status: 'desconectado',
+        telefone: null // Será preenchido quando conectar via Evolution API
       };
 
+      // Verificar se o usuário está autenticado corretamente
+      console.log('Usuário autenticado:', user);
+      
       const { data, error } = await supabase
         .from('saas_conexoes')
         .insert({

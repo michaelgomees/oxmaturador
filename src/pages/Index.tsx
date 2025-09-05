@@ -153,10 +153,10 @@ const Index = () => {
                     const chipForCard = {
                       id: chip.id,
                       name: chip.nome,
-                      status: chip.status === 'ativo' ? 'active' as const : 'idle' as const,
+                      status: chip.config?.telefone ? 'active' as const : 'idle' as const,
                       aiModel: chip.config?.aiModel || 'ChatGPT',
                       conversations: 0, // Será implementado posteriormente
-                      lastActive: new Date(chip.updated_at).toLocaleDateString('pt-BR')
+                      lastActive: chip.config?.telefone ? 'Conectado' : 'Aguardando conexão'
                     };
                     
                     return (
@@ -165,7 +165,7 @@ const Index = () => {
                         chip={chipForCard}
                         isSelected={selectedChip === chip.id}
                         onSelect={() => setSelectedChip(chip.id)}
-                        onGenerateQR={() => handleGenerateQRCode(chip.nome, chip.config?.telefone || '')}
+                        onGenerateQR={() => handleGenerateQRCode(chip.nome, chip.config?.telefone || 'Não conectado')}
                         onChipUpdated={handleChipCreated}
                       />
                     );

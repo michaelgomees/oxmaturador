@@ -17,7 +17,6 @@ export const CreateChipModal = ({ open, onOpenChange, onChipCreated }: CreateChi
   const [isLoading, setIsLoading] = useState(false);
   const [formData, setFormData] = useState({
     nome: "",
-    telefone: "",
     descricao: ""
   });
   const { createChip } = useChips();
@@ -29,14 +28,12 @@ export const CreateChipModal = ({ open, onOpenChange, onChipCreated }: CreateChi
     try {
       const success = await createChip({
         nome: formData.nome,
-        telefone: formData.telefone,
         descricao: formData.descricao
       });
       
       if (success) {
         setFormData({
           nome: "",
-          telefone: "",
           descricao: ""
         });
         
@@ -59,12 +56,12 @@ export const CreateChipModal = ({ open, onOpenChange, onChipCreated }: CreateChi
             Cadastrar Novo Chip
           </DialogTitle>
           <DialogDescription>
-            Configure uma nova instância conversacional com IA personalizada.
+            Configure uma nova instância conversacional. O telefone será conectado via QR code.
           </DialogDescription>
         </DialogHeader>
         
         <form onSubmit={handleSubmit} className="space-y-6">
-          <div className="grid grid-cols-2 gap-4">
+          <div className="space-y-4">
             <div className="space-y-2">
               <Label htmlFor="nome">Nome do Chip</Label>
               <Input
@@ -75,28 +72,17 @@ export const CreateChipModal = ({ open, onOpenChange, onChipCreated }: CreateChi
                 required
               />
             </div>
-            
+          
             <div className="space-y-2">
-              <Label htmlFor="telefone">Número de Telefone</Label>
-              <Input
-                id="telefone"
-                placeholder="Ex: +5511999999999"
-                value={formData.telefone}
-                onChange={(e) => setFormData({ ...formData, telefone: e.target.value })}
-                required
+              <Label htmlFor="descricao">Descrição (Opcional)</Label>
+              <Textarea
+                id="descricao"
+                placeholder="Descreva brevemente o propósito deste chip (ex: Responsável pelo atendimento de vendas)"
+                value={formData.descricao}
+                onChange={(e) => setFormData({ ...formData, descricao: e.target.value })}
+                rows={3}
               />
             </div>
-          </div>
-          
-          <div className="space-y-2">
-            <Label htmlFor="descricao">Descrição (Opcional)</Label>
-            <Textarea
-              id="descricao"
-              placeholder="Descreva brevemente o propósito deste chip (ex: Responsável pelo atendimento de vendas)"
-              value={formData.descricao}
-              onChange={(e) => setFormData({ ...formData, descricao: e.target.value })}
-              rows={3}
-            />
           </div>
           
           <DialogFooter>
