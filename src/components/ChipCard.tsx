@@ -9,7 +9,7 @@ import {
   DropdownMenuItem, 
   DropdownMenuTrigger 
 } from "@/components/ui/dropdown-menu";
-import { MoreVertical, Play, Pause, Settings, MessageCircle, Bot, QrCode, Wifi, History, Thermometer, TrendingUp } from "lucide-react";
+import { MoreVertical, Play, Pause, Settings, MessageCircle, Bot, QrCode, Wifi, History, Thermometer, TrendingUp, Trash2 } from "lucide-react";
 import { useState, useEffect } from "react";
 import { ChipConfigModal } from "./ChipConfigModal";
 import { ConversationsModal } from "./ConversationsModal";
@@ -17,6 +17,17 @@ import { ConnectionTestModal } from "./ConnectionTestModal";
 import { ChipHistoryModal } from "./ChipHistoryModal";
 import { useToast } from "@/hooks/use-toast";
 import { useChipMonitoring } from "@/hooks/useChipMonitoring";
+import { useChips } from "@/hooks/useChips";
+import { 
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 
 type ChipStatus = "active" | "idle" | "offline";
 
@@ -89,8 +100,10 @@ export const ChipCard = ({ chip, isSelected, onSelect, onGenerateQR, onChipUpdat
   const [conversationsModalOpen, setConversationsModalOpen] = useState(false);
   const [connectionTestModalOpen, setConnectionTestModalOpen] = useState(false);
   const [historyModalOpen, setHistoryModalOpen] = useState(false);
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const { toast } = useToast();
   const { initializeChip, getChipMonitoring, simulateChipActivity } = useChipMonitoring();
+  const { deleteChip } = useChips();
   
   const status = statusConfig[chip.status];
   const modelColor = aiModelColors[chip.aiModel as keyof typeof aiModelColors] || "bg-muted text-muted-foreground";
@@ -133,6 +146,14 @@ export const ChipCard = ({ chip, isSelected, onSelect, onGenerateQR, onChipUpdat
       return chipConfig?.phone || "+5511999999999";
     }
     return "+5511999999999";
+  };
+
+  const handleDeleteChip = async () => {
+    const success = await deleteChip(chip.id);
+    if (success) {
+      onChipUpdated?.();
+    }
+    setDeleteDialogOpen(false);
   };
 
   return (
@@ -192,6 +213,13 @@ export const ChipCard = ({ chip, isSelected, onSelect, onGenerateQR, onChipUpdat
               <DropdownMenuItem onClick={(e) => { e.stopPropagation(); handleToggleStatus(); }}>
                 {chip.status === "active" ? <Pause className="mr-2 h-4 w-4" /> : <Play className="mr-2 h-4 w-4" />}
                 {chip.status === "active" ? "Pausar" : "Ativar"}
+              </DropdownMenuItem>
+              <DropdownMenuItem 
+                onClick={(e) => { e.stopPropagation(); setDeleteDialogOpen(true); }}
+                className="text-destructive focus:text-destructive"
+              >
+                <Trash2 className="mr-2 h-4 w-4" />
+                Excluir Chip
               </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
@@ -299,6 +327,27 @@ export const ChipCard = ({ chip, isSelected, onSelect, onGenerateQR, onChipUpdat
         chipId={chip.id}
         chipName={chip.name}
       />
+
+      {/* Dialog de confirmação de exclusão */}
+      <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Excluir Chip</AlertDialogTitle>
+            <AlertDialogDescription>
+              Tem certeza que deseja excluir o chip "{chip.name}"? Esta ação não pode ser desfeita.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogAction 
+              onClick={handleDeleteChip}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              Excluir
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </Card>
   );
 };
