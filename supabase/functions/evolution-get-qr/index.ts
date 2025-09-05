@@ -5,26 +5,20 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
-async function tryFetch(url: string, apiKey: string, instanceName: string) {
-  // Try GET without body first
-  const res = await fetch(url, {
-    method: 'GET',
-    headers: {
-      'apikey': apiKey,
-    },
-  });
-  if (res.ok) return res;
-
-  // Try POST with JSON
-  const res2 = await fetch(url, {
-    method: 'POST',
-    headers: {
-      'apikey': apiKey,
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify({ instanceName }),
-  });
-  return res2;
+async function fetchWithLog(url: string, init: RequestInit) {
+  const res = await fetch(url, init);
+  let snippet = '';
+  try { snippet = (await res.clone().text()).slice(0, 200); } catch { /* ignore */ }
+  return {
+    res,
+    log: {
+      url,
+      method: (init.method || 'GET'),
+      status: res.status,
+      contentType: res.headers.get('content-type') || '',
+      bodySnippet: snippet,
+    }
+  };
 }
 
 serve(async (req) => {
@@ -63,16 +57,34 @@ serve(async (req) => {
     ];
 
     let finalRes: Response | null = null;
+    const attempts: Array<{url:string; method:string; status:number; contentType:string; bodySnippet:string}> = [];
     for (const url of candidates) {
       try {
-        const res = await tryFetch(url, apiKey, instanceName);
-        if (res.ok) { finalRes = res; break; }
-      } catch (_) { /* try next */ }
+        // GET attempt
+        const { res: resGet, log: logGet } = await fetchWithLog(url, {
+          method: 'GET',
+          headers: { 'apikey': apiKey },
+        });
+        attempts.push(logGet);
+        if (resGet.ok) { finalRes = resGet; break; }
+
+        // POST attempt
+        const { res: resPost, log: logPost } = await fetchWithLog(url, {
+          method: 'POST',
+          headers: { 'apikey': apiKey, 'Content-Type': 'application/json' },
+          body: JSON.stringify({ instanceName }),
+        });
+        attempts.push(logPost);
+        if (resPost.ok) { finalRes = resPost; break; }
+      } catch (e) {
+        // Log client-side error per URL
+        attempts.push({ url, method: 'GET', status: 0, contentType: '', bodySnippet: String(e) });
+      }
     }
 
     if (!finalRes) {
       return new Response(
-        JSON.stringify({ success: false, message: 'Não foi possível obter QR Code da Evolution API' }),
+        JSON.stringify({ success: false, message: 'Não foi possível obter QR Code da Evolution API', tried: attempts }),
         { status: 502, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }

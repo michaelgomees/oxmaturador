@@ -358,13 +358,31 @@ export const useConnections = () => {
         body: { baseUrl: endpoint, instanceName },
       });
 
-      if (error || !data?.success) {
-        throw new Error('Falha ao obter QR');
+      if (error) {
+        console.error('Erro evolution-get-qr:', error);
+        toast({
+          title: "Erro ao obter QR",
+          description: error.message || "Falha na comunicação com a Evolution API.",
+          variant: "destructive",
+        });
+        return null;
+      }
+
+      if (!data?.success) {
+        console.error('Evolution get-qr retornou erro:', data);
+        const attempts = Array.isArray((data as any)?.tried) ? (data as any).tried : [];
+        const statusInfo = attempts.length ? `Status: ${attempts.map((a: any) => a.status).filter(Boolean).join(', ')}` : '';
+        toast({
+          title: "Erro ao obter QR",
+          description: `${(data as any)?.message || 'Falha ao obter QR.'} ${statusInfo}`.trim(),
+          variant: "destructive",
+        });
+        return null;
       }
 
       return {
         instanceName,
-        qrCode: data.qrCode as string,
+        qrCode: (data as any).qrCode as string,
         status: 'connecting' as const,
       };
     } catch (err) {
