@@ -32,7 +32,7 @@ serve(async (req) => {
     if (!baseUrl || !instanceName) {
       return new Response(
         JSON.stringify({ success: false, message: 'baseUrl e instanceName são obrigatórios' }),
-        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
 
@@ -40,7 +40,7 @@ serve(async (req) => {
     if (!apiKey) {
       return new Response(
         JSON.stringify({ success: false, message: 'EVOLUTION_API_KEY não configurada nas Functions' }),
-        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
 
@@ -85,7 +85,7 @@ serve(async (req) => {
     if (!finalRes) {
       return new Response(
         JSON.stringify({ success: false, message: 'Não foi possível obter QR Code da Evolution API', tried: attempts }),
-        { status: 502, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
 
@@ -121,7 +121,7 @@ serve(async (req) => {
     if (!qrCandidate) {
       return new Response(
         JSON.stringify({ success: false, message: 'Resposta inválida da Evolution API ao obter QR', json }),
-        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
 
@@ -137,8 +137,8 @@ serve(async (req) => {
   } catch (error) {
     console.error('evolution-get-qr error:', error);
     return new Response(
-      JSON.stringify({ success: false, message: 'Erro interno ao obter QR' }),
-      { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      JSON.stringify({ success: false, message: 'Erro interno ao obter QR', details: String(error) }),
+      { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
   }
 });
