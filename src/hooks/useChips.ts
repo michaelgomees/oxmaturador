@@ -20,10 +20,14 @@ export const useChips = () => {
   const { toast } = useToast();
 
   const fetchChips = async () => {
-    if (!user) return;
+    if (!user) {
+      console.log('Usuário não autenticado, não buscando chips');
+      return;
+    }
     
     setIsLoading(true);
     try {
+      console.log('Buscando chips para usuário:', user.id);
       const { data, error } = await supabase
         .from('saas_conexoes')
         .select('*')
@@ -31,6 +35,7 @@ export const useChips = () => {
         .order('created_at', { ascending: false });
 
       if (error) throw error;
+      console.log('Chips encontrados:', data);
       setChips(data || []);
     } catch (error) {
       console.error('Erro ao buscar chips:', error);
@@ -76,7 +81,12 @@ export const useChips = () => {
         description: `${chipData.nome} foi cadastrado e está pronto para uso.`,
       });
 
-      // Recarregar lista de chips
+      // Atualizar a lista imediatamente adicionando o novo chip
+      if (data) {
+        setChips(prev => [data, ...prev]);
+      }
+      
+      // Também recarregar do servidor para garantir sincronização
       await fetchChips();
       return true;
     } catch (error: any) {

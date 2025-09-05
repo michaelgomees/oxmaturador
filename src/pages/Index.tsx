@@ -33,6 +33,7 @@ const Index = () => {
   };
 
   const handleChipCreated = () => {
+    console.log('Chip criado, atualizando interface...');
     // Os chips são automaticamente recarregados pelo hook useChips
   };
 
@@ -147,9 +148,14 @@ const Index = () => {
                     </Card>
                   ))}
                 </div>
+              ) : chips.length === 0 ? (
+                <div className="col-span-full text-center py-12">
+                  <p className="text-muted-foreground">Nenhum chip criado ainda. Crie seu primeiro chip!</p>
+                </div>
               ) : (
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                   {chips.map((chip) => {
+                    console.log('Renderizando chip:', chip);
                     const chipForCard = {
                       id: chip.id,
                       name: chip.nome,
