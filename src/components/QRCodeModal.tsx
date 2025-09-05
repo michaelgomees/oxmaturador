@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-aimport { useToast } from "@/hooks/use-toast";
+import { useToast } from "@/hooks/use-toast";
 import { Loader2, QrCode, CheckCircle, AlertCircle, RefreshCw } from "lucide-react";
 import { useConnections } from "@/hooks/useConnections";
 
