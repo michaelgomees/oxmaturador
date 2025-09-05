@@ -10,6 +10,9 @@ import { Separator } from "@/components/ui/separator";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Link, CheckCircle, XCircle, RefreshCw, Save, Plus, QrCode, Bot, Brain, Sparkles, Network, Eye, EyeOff } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { useConnections } from "@/hooks/useConnections";
+import { CreateConnectionModal } from "@/components/CreateConnectionModal";
+import { QRCodeModal } from "@/components/QRCodeModal";
 
 interface EvolutionAPI {
   endpoint: string;
@@ -32,14 +35,6 @@ interface NgrokConfig {
   auth_token: string;
   endpoint: string;
   status: 'connected' | 'disconnected';
-}
-
-interface Connection {
-  id: string;
-  name: string;
-  status: 'active' | 'inactive';
-  qrCode?: string;
-  lastActive: string;
 }
 
 export const APIsTab = () => {
@@ -66,11 +61,12 @@ export const APIsTab = () => {
     status: 'disconnected'
   });
   
-  const [connections, setConnections] = useState<Connection[]>([]);
-  const [isCreatingConnection, setIsCreatingConnection] = useState(false);
-  const [newConnectionName, setNewConnectionName] = useState('');
   const [showApiKeys, setShowApiKeys] = useState<Record<string, boolean>>({});
+  const [showCreateModal, setShowCreateModal] = useState(false);
+  const [showQRModal, setShowQRModal] = useState(false);
+  const [selectedConnection, setSelectedConnection] = useState<string>("");
   const { toast } = useToast();
+  const { connections, isLoading, updateConnection, deleteConnection } = useConnections();
 
   // Carregar dados do localStorage
   useEffect(() => {
@@ -89,10 +85,6 @@ export const APIsTab = () => {
       setNgrokConfig(JSON.parse(savedNgrokConfig));
     }
     
-    const savedConnections = localStorage.getItem('ox-api-connections');
-    if (savedConnections) {
-      setConnections(JSON.parse(savedConnections));
-    }
   }, []);
 
   // Salvar configurações
@@ -111,10 +103,6 @@ export const APIsTab = () => {
     localStorage.setItem('ox-ngrok-config', JSON.stringify(newConfig));
   };
 
-  const saveConnections = (newConnections: Connection[]) => {
-    setConnections(newConnections);
-    localStorage.setItem('ox-api-connections', JSON.stringify(newConnections));
-  };
 
   const handleSaveAPI = () => {
     if (!evolutionAPI.endpoint || !evolutionAPI.apiKey) {
@@ -223,15 +211,6 @@ export const APIsTab = () => {
   };
 
   const handleCreateConnection = () => {
-    if (!newConnectionName.trim()) {
-      toast({
-        title: "Erro",
-        description: "Nome da conexão é obrigatório.",
-        variant: "destructive"
-      });
-      return;
-    }
-
     if (evolutionAPI.status !== 'connected') {
       toast({
         title: "Erro",
@@ -240,46 +219,24 @@ export const APIsTab = () => {
       });
       return;
     }
-
-    const connection: Connection = {
-      id: Date.now().toString(),
-      name: newConnectionName,
-      status: 'active',
-      qrCode: `https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(newConnectionName)}`,
-      lastActive: new Date().toISOString()
-    };
-
-    saveConnections([...connections, connection]);
-    setNewConnectionName('');
-    setIsCreatingConnection(false);
-    
-    toast({
-      title: "Conexão criada",
-      description: `Conexão "${newConnectionName}" criada com QR Code gerado automaticamente.`
-    });
+    setShowCreateModal(true);
   };
 
-  const handleToggleConnection = (id: string) => {
-    const updatedConnections = connections.map(conn => 
-      conn.id === id 
-        ? { 
-            ...conn, 
-            status: (conn.status === 'active' ? 'inactive' : 'active') as Connection['status'],
-            lastActive: new Date().toISOString()
-          }
-        : conn
-    );
-    saveConnections(updatedConnections);
+  const handleToggleConnection = async (id: string) => {
+    const connection = connections.find(conn => conn.id === id);
+    if (!connection) return;
+    
+    const newStatus = connection.status === 'ativo' ? 'inativo' : 'ativo';
+    await updateConnection(id, { status: newStatus });
   };
 
-  const handleDeleteConnection = (id: string) => {
-    const updatedConnections = connections.filter(conn => conn.id !== id);
-    saveConnections(updatedConnections);
-    
-    toast({
-      title: "Conexão removida",
-      description: "Conexão deletada com sucesso."
-    });
+  const handleDeleteConnection = async (id: string) => {
+    await deleteConnection(id);
+  };
+
+  const handleShowQR = (connectionId: string) => {
+    setSelectedConnection(connectionId);
+    setShowQRModal(true);
   };
 
   const getStatusIcon = (status: EvolutionAPI['status']) => {
@@ -387,7 +344,7 @@ export const APIsTab = () => {
               </CardDescription>
             </div>
             <Button 
-              onClick={() => setIsCreatingConnection(true)}
+              onClick={handleCreateConnection}
               disabled={evolutionAPI.status !== 'connected'}
             >
               <Plus className="w-4 h-4 mr-2" />
@@ -396,29 +353,6 @@ export const APIsTab = () => {
           </div>
         </CardHeader>
         <CardContent>
-          {/* Create Connection Form */}
-          {isCreatingConnection && (
-            <div className="space-y-4 p-4 border rounded-lg mb-4">
-              <div className="space-y-2">
-                <Label htmlFor="connectionName">Nome da Conexão</Label>
-                <Input
-                  id="connectionName"
-                  placeholder="Ex: WhatsApp Principal"
-                  value={newConnectionName}
-                  onChange={(e) => setNewConnectionName(e.target.value)}
-                />
-              </div>
-              <div className="flex justify-end gap-2">
-                <Button variant="outline" onClick={() => setIsCreatingConnection(false)}>
-                  Cancelar
-                </Button>
-                <Button onClick={handleCreateConnection}>
-                  <QrCode className="w-4 h-4 mr-2" />
-                  Criar e Gerar QR
-                </Button>
-              </div>
-            </div>
-          )}
 
           {/* Connections List */}
           <div className="space-y-4">
@@ -438,25 +372,27 @@ export const APIsTab = () => {
                 <div key={connection.id} className="flex items-center justify-between p-4 border rounded-lg">
                   <div className="flex items-center gap-4">
                     <div>
-                      <h4 className="font-medium">{connection.name}</h4>
+                      <h4 className="font-medium">{connection.nome}</h4>
                       <p className="text-sm text-muted-foreground">
-                        Última atividade: {new Date(connection.lastActive).toLocaleString('pt-BR')}
+                        Criado em: {new Date(connection.created_at).toLocaleString('pt-BR')}
                       </p>
                     </div>
-                    <Badge variant={connection.status === 'active' ? 'default' : 'secondary'}>
-                      {connection.status === 'active' ? 'Ativo' : 'Inativo'}
+                    <Badge variant={connection.status === 'ativo' ? 'default' : 'secondary'}>
+                      {connection.status === 'ativo' ? 'Ativo' : 'Inativo'}
                     </Badge>
                   </div>
                   
                   <div className="flex items-center gap-2">
-                    {connection.qrCode && (
-                      <Button variant="outline" size="sm">
-                        <QrCode className="w-4 h-4 mr-2" />
-                        Ver QR
-                      </Button>
-                    )}
+                    <Button 
+                      variant="outline" 
+                      size="sm"
+                      onClick={() => handleShowQR(connection.id)}
+                    >
+                      <QrCode className="w-4 h-4 mr-2" />
+                      Ver QR
+                    </Button>
                     <Switch
-                      checked={connection.status === 'active'}
+                      checked={connection.status === 'ativo'}
                       onCheckedChange={() => handleToggleConnection(connection.id)}
                     />
                     <Button
@@ -474,6 +410,23 @@ export const APIsTab = () => {
           </div>
         </CardContent>
       </Card>
+
+      {/* Modals */}
+      <CreateConnectionModal
+        open={showCreateModal}
+        onOpenChange={setShowCreateModal}
+        onConnectionCreated={() => setShowCreateModal(false)}
+      />
+
+      {selectedConnection && (
+        <QRCodeModal
+          open={showQRModal}
+          onOpenChange={setShowQRModal}
+          chipId={selectedConnection}
+          chipName={connections.find(c => c.id === selectedConnection)?.nome || ""}
+          chipPhone=""
+        />
+      )}
 
       {/* AI Providers Configuration */}
       <Card>

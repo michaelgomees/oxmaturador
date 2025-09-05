@@ -147,9 +147,17 @@ export const QRCodeModal = ({ open, onOpenChange, chipId, chipName, chipPhone }:
                 </div>
               ) : (
                 <div className="w-full h-full bg-white p-4 rounded">
-                  <div className="w-full h-full bg-black flex items-center justify-center">
-                    <QrCode className="w-32 h-32 text-white" />
-                  </div>
+                  {qrCodeUrl ? (
+                    <img 
+                      src={qrCodeUrl} 
+                      alt="QR Code" 
+                      className="w-full h-full object-contain"
+                    />
+                  ) : (
+                    <div className="w-full h-full bg-black flex items-center justify-center">
+                      <QrCode className="w-32 h-32 text-white" />
+                    </div>
+                  )}
                 </div>
               )}
             </div>
