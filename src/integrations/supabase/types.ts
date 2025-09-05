@@ -101,7 +101,6 @@ export type Database = {
           email: string
           id: string
           nome: string
-          senha_hash: string
           status: string
         }[]
       }

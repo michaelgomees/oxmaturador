@@ -16,22 +16,22 @@ export interface Chip {
 export const useChips = () => {
   const [chips, setChips] = useState<Chip[]>([]);
   const [isLoading, setIsLoading] = useState(false);
-  const { user } = useAuth();
+  const { user, userProfile } = useAuth();
   const { toast } = useToast();
 
   const fetchChips = async () => {
-    if (!user) {
+    if (!userProfile) {
       console.log('Usuário não autenticado, não buscando chips');
       return;
     }
     
     setIsLoading(true);
     try {
-      console.log('Buscando chips para usuário:', user.id);
+      console.log('Buscando chips para usuário:', userProfile.id);
       const { data, error } = await supabase
         .from('saas_conexoes')
         .select('*')
-        .eq('usuario_id', user.id)
+        .eq('usuario_id', userProfile.id)
         .order('created_at', { ascending: false });
 
       if (error) throw error;
@@ -50,7 +50,7 @@ export const useChips = () => {
   };
 
   const createChip = async (chipData: { nome: string; descricao?: string }) => {
-    if (!user) return false;
+    if (!userProfile) return false;
 
     try {
       const config = {
@@ -61,14 +61,14 @@ export const useChips = () => {
       };
 
       // Verificar se o usuário está autenticado corretamente
-      console.log('Usuário autenticado:', user);
+      console.log('Usuário autenticado:', userProfile);
       
       const { data, error } = await supabase
         .from('saas_conexoes')
         .insert({
           nome: chipData.nome,
           config: config,
-          usuario_id: user.id,
+          usuario_id: userProfile.id, // Incluir mesmo que seja sobrescrito pelo trigger
           status: 'ativo'
         })
         .select()
@@ -95,7 +95,7 @@ export const useChips = () => {
       if (error.message?.includes('Limite de chips atingido')) {
         toast({
           title: "Limite de chips atingido",
-          description: `Você atingiu o limite de ${user.chips_limite} chips.`,
+          description: `Você atingiu o limite de ${userProfile.chips_limite} chips.`,
           variant: "destructive",
         });
       } else {
@@ -110,14 +110,14 @@ export const useChips = () => {
   };
 
   const updateChip = async (chipId: string, updates: Partial<Chip>) => {
-    if (!user) return false;
+    if (!userProfile) return false;
 
     try {
       const { error } = await supabase
         .from('saas_conexoes')
         .update(updates)
         .eq('id', chipId)
-        .eq('usuario_id', user.id);
+        .eq('usuario_id', userProfile.id);
 
       if (error) throw error;
 
@@ -140,14 +140,14 @@ export const useChips = () => {
   };
 
   const deleteChip = async (chipId: string) => {
-    if (!user) return false;
+    if (!userProfile) return false;
 
     try {
       const { error } = await supabase
         .from('saas_conexoes')
         .delete()
         .eq('id', chipId)
-        .eq('usuario_id', user.id);
+        .eq('usuario_id', userProfile.id);
 
       if (error) throw error;
 
@@ -170,10 +170,10 @@ export const useChips = () => {
   };
 
   useEffect(() => {
-    if (user) {
+    if (userProfile) {
       fetchChips();
     }
-  }, [user]);
+  }, [userProfile]);
 
   return {
     chips,

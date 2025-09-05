@@ -20,7 +20,7 @@ import oxLogo from "@/assets/ox-logo.png";
 
 export const Header = () => {
   const { toast } = useToast();
-  const { user, logout, isAuthenticated } = useAuth();
+  const { user, userProfile, logout, isAuthenticated } = useAuth();
   const [systemConfigOpen, setSystemConfigOpen] = useState(false);
   const [profileOpen, setProfileOpen] = useState(false);
 
@@ -95,7 +95,7 @@ export const Header = () => {
               </DropdownMenuTrigger>
               <DropdownMenuContent className="w-56" align="end" forceMount>
                 <div className="flex flex-col space-y-1 p-2">
-                  <p className="text-sm font-medium leading-none">{user?.nome}</p>
+                  <p className="text-sm font-medium leading-none">{userProfile?.nome}</p>
                   <p className="text-xs leading-none text-muted-foreground">
                     {user?.email}
                   </p>
