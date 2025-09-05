@@ -128,10 +128,17 @@ export const useConnections = () => {
       if (!evoCreate?.success) {
         console.error('Evolution API retornou erro:', evoCreate);
         const errorMsg = evoCreate?.message || 'Resposta inválida da Evolution API';
-        const details = evoCreate?.details ? ` Detalhes: ${evoCreate.details}` : '';
+        
+        // Mostrar tentativas detalhadas se disponíveis
+        let detailsMsg = '';
+        if (evoCreate?.tried && Array.isArray(evoCreate.tried)) {
+          const statusCodes = evoCreate.tried.map((t: any) => t.status || 'erro').join(', ');
+          detailsMsg = ` Status das tentativas: ${statusCodes}`;
+        }
+        
         toast({
           title: "Erro na Evolution API",
-          description: `${errorMsg}${details}`,
+          description: `${errorMsg}${detailsMsg}. Verifique se o endpoint da Evolution está correto e acessível.`,
           variant: "destructive",
         });
         return false;

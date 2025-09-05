@@ -61,15 +61,20 @@ serve(async (req) => {
 
     // Tentar múltiplos caminhos/métodos comuns da Evolution API
     const candidates: Array<{ path: string; method: string; body?: Record<string, unknown> }> = [
+      // Rotas mais comuns da Evolution API
+      { path: '/instance/create', method: 'POST', body: { instanceName } },
+      { path: `/instance/create/${encodeURIComponent(instanceName)}`, method: 'POST' },
       { path: '/manager/instances/create', method: 'POST', body: { instanceName } },
       { path: '/instances/create', method: 'POST', body: { instanceName } },
-      { path: '/evolution/manager/instances/create', method: 'POST', body: { instanceName } },
-      { path: `/manager/instances/create/${encodeURIComponent(instanceName)}`, method: 'POST' },
+      { path: '/instance', method: 'POST', body: { instanceName } },
+      { path: '/instances', method: 'POST', body: { instanceName } },
+      { path: '/v1/instance/create', method: 'POST', body: { instanceName } },
+      { path: '/api/instance/create', method: 'POST', body: { instanceName } },
+      // Variações com diferentes parâmetros
+      { path: '/instance/create', method: 'POST', body: { name: instanceName } },
+      { path: '/instance/create', method: 'POST', body: { instance: instanceName } },
+      { path: '/manager/instances', method: 'POST', body: { instanceName } },
       { path: '/manager/instances', method: 'POST', body: { name: instanceName } },
-      { path: '/instances', method: 'POST', body: { name: instanceName } },
-      // fallback via query
-      { path: `/manager/instances/create?instanceName=${encodeURIComponent(instanceName)}`, method: 'POST' },
-      { path: `/instances/create?instanceName=${encodeURIComponent(instanceName)}`, method: 'POST' },
     ];
 
     const attempts: any[] = [];
