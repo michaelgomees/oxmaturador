@@ -42,15 +42,7 @@ export type Database = {
           updated_at?: string
           usuario_id?: string
         }
-        Relationships: [
-          {
-            foreignKeyName: "saas_conexoes_usuario_id_fkey"
-            columns: ["usuario_id"]
-            isOneToOne: false
-            referencedRelation: "saas_usuarios"
-            referencedColumns: ["id"]
-          },
-        ]
+        Relationships: []
       }
       saas_usuarios: {
         Row: {
