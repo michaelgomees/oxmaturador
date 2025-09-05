@@ -14,12 +14,38 @@ import { useToast } from "@/hooks/use-toast";
 import { AlertsPanel } from "./AlertsPanel";
 import { SystemConfigModal } from "./SystemConfigModal";
 import { ProfileModal } from "./ProfileModal";
+import { useAuth } from "@/hooks/useAuth";
+import { Link } from "react-router-dom";
 import oxLogo from "@/assets/ox-logo.png";
 
 export const Header = () => {
   const { toast } = useToast();
+  const { user, logout, isAuthenticated } = useAuth();
   const [systemConfigOpen, setSystemConfigOpen] = useState(false);
   const [profileOpen, setProfileOpen] = useState(false);
+
+  if (!isAuthenticated) {
+    return (
+      <header className="border-b bg-card/50 backdrop-blur supports-[backdrop-filter]:bg-card/50 sticky top-0 z-50">
+        <div className="container mx-auto px-6 py-4">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <div className="flex items-center justify-center w-10 h-10 rounded-lg overflow-hidden">
+                <img src={oxLogo} alt="OX MATURADOR" className="w-8 h-8" />
+              </div>
+              <div>
+                <h1 className="font-bold text-lg">OX MATURADOR</h1>
+                <p className="text-xs text-muted-foreground">Sistema de Chips IA</p>
+              </div>
+            </div>
+            <Link to="/login">
+              <Button>Fazer Login</Button>
+            </Link>
+          </div>
+        </div>
+      </header>
+    );
+  }
   return (
     <header className="border-b bg-card/50 backdrop-blur supports-[backdrop-filter]:bg-card/50 sticky top-0 z-50">
       <div className="container mx-auto px-6 py-4">
@@ -69,9 +95,9 @@ export const Header = () => {
               </DropdownMenuTrigger>
               <DropdownMenuContent className="w-56" align="end" forceMount>
                 <div className="flex flex-col space-y-1 p-2">
-                  <p className="text-sm font-medium leading-none">Usuário Demo</p>
+                  <p className="text-sm font-medium leading-none">{user?.nome}</p>
                   <p className="text-xs leading-none text-muted-foreground">
-                    demo@oxmaturador.com
+                    {user?.email}
                   </p>
                 </div>
                 <DropdownMenuSeparator />
@@ -86,11 +112,13 @@ export const Header = () => {
                 <DropdownMenuSeparator />
                 <DropdownMenuItem 
                   className="text-destructive"
-                  onClick={() => toast({
-                    title: "Logout",
-                    description: "Sistema de autenticação será implementado com Supabase.",
-                    variant: "destructive"
-                  })}
+                  onClick={() => {
+                    logout();
+                    toast({
+                      title: "Logout realizado",
+                      description: "Você foi desconectado do sistema.",
+                    });
+                  }}
                 >
                   <LogOut className="mr-2 h-4 w-4" />
                   <span>Sair</span>
