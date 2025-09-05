@@ -67,16 +67,28 @@ export const useConnections = () => {
       if (!evolutionConfigStr) {
         toast({
           title: "Configuração da Evolution ausente",
-          description: "Defina o endpoint da Evolution em APIs > Evolution API.",
+          description: "Configure a Evolution API primeiro em APIs > Evolution API (Global).",
           variant: "destructive",
         });
         return false;
       }
+      
       const apiConfig = JSON.parse(evolutionConfigStr);
+      console.log('Config da Evolution API:', apiConfig);
+      
       if (!apiConfig.endpoint) {
         toast({
           title: "Endpoint não configurado",
           description: "Informe o endpoint da Evolution API antes de criar a conexão.",
+          variant: "destructive",
+        });
+        return false;
+      }
+      
+      if (apiConfig.status !== 'connected') {
+        toast({
+          title: "Evolution API não testada",
+          description: "Teste a conexão com a Evolution API primeiro.",
           variant: "destructive",
         });
         return false;
@@ -100,11 +112,26 @@ export const useConnections = () => {
       const { data: evoCreate, error: evoErr } = await supabase.functions.invoke('evolution-create-instance', {
         body: { baseUrl, instanceName },
       });
-      if (evoErr || !evoCreate?.success) {
-        console.error('Falha ao criar instância Evolution:', evoErr || evoCreate);
+      
+      console.log('Evolution create response:', { evoCreate, evoErr });
+      
+      if (evoErr) {
+        console.error('Erro na edge function:', evoErr);
         toast({
-          title: "Erro ao criar instância",
-          description: "Não foi possível criar a instância no Evolution.",
+          title: "Erro na comunicação",
+          description: `Falha ao conectar com a Evolution API: ${evoErr.message}`,
+          variant: "destructive",
+        });
+        return false;
+      }
+      
+      if (!evoCreate?.success) {
+        console.error('Evolution API retornou erro:', evoCreate);
+        const errorMsg = evoCreate?.message || 'Resposta inválida da Evolution API';
+        const details = evoCreate?.details ? ` Detalhes: ${evoCreate.details}` : '';
+        toast({
+          title: "Erro na Evolution API",
+          description: `${errorMsg}${details}`,
           variant: "destructive",
         });
         return false;
@@ -154,13 +181,25 @@ export const useConnections = () => {
       if (error.message?.includes('Limite de chips atingido')) {
         toast({
           title: "Limite de conexões atingido",
-          description: `Você atingiu o limite de ${userProfile.chips_limite} conexões.`,
+          description: `Você atingiu o limite de conexões permitidas.`,
+          variant: "destructive",
+        });
+      } else if (error.message?.includes('Falha ao conectar com a Evolution API')) {
+        toast({
+          title: "Erro de comunicação",
+          description: "Verifique se a Evolution API está acessível e a chave de API está correta.",
+          variant: "destructive",
+        });
+      } else if (error.message?.includes('Erro Evolution:')) {
+        toast({
+          title: "Erro na Evolution API",
+          description: "A Evolution API retornou um erro. Verifique as configurações e tente novamente.",
           variant: "destructive",
         });
       } else {
         toast({
           title: "Erro ao criar conexão",
-          description: "Ocorreu um erro inesperado. Tente novamente.",
+          description: "Ocorreu um erro inesperado. Verifique os logs para mais detalhes.",
           variant: "destructive",
         });
       }

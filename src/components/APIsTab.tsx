@@ -142,19 +142,59 @@ export const APIsTab = () => {
       return;
     }
 
-    // Simular teste de conexão
-    const updatedAPI = {
-      ...evolutionAPI,
-      status: 'connected' as const,
-      lastTest: new Date().toISOString()
-    };
-    
-    saveEvolutionAPI(updatedAPI);
-    
-    toast({
-      title: "API testada",
-      description: "Conexão com Evolution API estabelecida com sucesso."
-    });
+    try {
+      const normalizeEndpoint = (value: string) => {
+        let url = String(value || '').trim();
+        if (!/^https?:\/\//i.test(url)) url = `https://${url}`;
+        return url.replace(/\/$/, '');
+      };
+
+      const baseUrl = normalizeEndpoint(evolutionAPI.endpoint);
+      
+      // Teste simples: tentar buscar informações da API
+      const testUrl = `${baseUrl}/manager/instances`;
+      const response = await fetch(testUrl, {
+        method: 'GET',
+        headers: {
+          'apikey': evolutionAPI.apiKey,
+        },
+      });
+
+      if (response.ok) {
+        const updatedAPI = {
+          ...evolutionAPI,
+          endpoint: baseUrl,
+          status: 'connected' as const,
+          lastTest: new Date().toISOString()
+        };
+        
+        saveEvolutionAPI(updatedAPI);
+        
+        toast({
+          title: "API testada com sucesso!",
+          description: "Conexão com Evolution API estabelecida. Agora você pode criar conexões.",
+        });
+      } else {
+        const errorText = await response.text().catch(() => 'Erro desconhecido');
+        throw new Error(`HTTP ${response.status}: ${errorText}`);
+      }
+    } catch (error) {
+      console.error('Erro ao testar API:', error);
+      
+      const updatedAPI = {
+        ...evolutionAPI,
+        status: 'error' as const,
+        lastTest: new Date().toISOString()
+      };
+      
+      saveEvolutionAPI(updatedAPI);
+      
+      toast({
+        title: "Falha no teste da API",
+        description: `Erro: ${error instanceof Error ? error.message : 'Verifique endpoint e chave de API'}`,
+        variant: "destructive"
+      });
+    }
   };
 
   const handleSaveAIConfig = () => {

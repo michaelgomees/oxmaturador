@@ -12,8 +12,10 @@ serve(async (req) => {
 
   try {
     const { baseUrl, instanceName } = await req.json();
+    console.log('Received request:', { baseUrl, instanceName });
 
     if (!baseUrl || !instanceName) {
+      console.error('Missing required fields:', { baseUrl, instanceName });
       return new Response(
         JSON.stringify({ success: false, message: 'baseUrl e instanceName são obrigatórios' }),
         { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
@@ -22,6 +24,7 @@ serve(async (req) => {
 
     const apiKey = Deno.env.get('EVOLUTION_API_KEY');
     if (!apiKey) {
+      console.error('EVOLUTION_API_KEY not found in environment');
       return new Response(
         JSON.stringify({ success: false, message: 'EVOLUTION_API_KEY não configurada nas Functions' }),
         { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
@@ -29,6 +32,7 @@ serve(async (req) => {
     }
 
     const url = `${baseUrl.replace(/\/$/, '')}/manager/instances/create`;
+    console.log('Making request to:', url);
 
     const response = await fetch(url, {
       method: 'POST',
@@ -39,8 +43,11 @@ serve(async (req) => {
       body: JSON.stringify({ instanceName }),
     });
 
+    console.log('Evolution API response status:', response.status);
+
     if (!response.ok) {
       const text = await response.text();
+      console.error('Evolution API error response:', { status: response.status, text });
       return new Response(
         JSON.stringify({ success: false, message: `Erro Evolution: ${response.status}`, details: text }),
         { status: response.status, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
@@ -48,6 +55,7 @@ serve(async (req) => {
     }
 
     const data = await response.json().catch(() => ({}));
+    console.log('Evolution API success response:', data);
 
     return new Response(
       JSON.stringify({ success: true, instanceName, data }),

@@ -1,11 +1,12 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 import { useConnections } from "@/hooks/useConnections";
-import { Loader2, Network } from "lucide-react";
+import { Loader2, Network, AlertTriangle, CheckCircle } from "lucide-react";
 
 interface CreateConnectionModalProps {
   open: boolean;
@@ -15,14 +16,42 @@ interface CreateConnectionModalProps {
 
 export const CreateConnectionModal = ({ open, onOpenChange, onConnectionCreated }: CreateConnectionModalProps) => {
   const [isLoading, setIsLoading] = useState(false);
+  const [evolutionStatus, setEvolutionStatus] = useState<'unknown' | 'connected' | 'error'>('unknown');
   const [formData, setFormData] = useState({
     nome: "",
     descricao: ""
   });
   const { createConnection } = useConnections();
 
+  // Verificar status da Evolution API quando o modal abrir
+  useEffect(() => {
+    if (open) {
+      const evolutionConfigStr = localStorage.getItem('ox-evolution-api');
+      if (!evolutionConfigStr) {
+        setEvolutionStatus('error');
+        return;
+      }
+      
+      try {
+        const config = JSON.parse(evolutionConfigStr);
+        if (config.status === 'connected') {
+          setEvolutionStatus('connected');
+        } else {
+          setEvolutionStatus('error');
+        }
+      } catch {
+        setEvolutionStatus('error');
+      }
+    }
+  }, [open]);
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    
+    if (evolutionStatus !== 'connected') {
+      return;
+    }
+    
     setIsLoading(true);
 
     try {
@@ -60,6 +89,25 @@ export const CreateConnectionModal = ({ open, onOpenChange, onConnectionCreated 
           </DialogDescription>
         </DialogHeader>
         
+        {/* Status da Evolution API */}
+        {evolutionStatus === 'error' && (
+          <Alert variant="destructive">
+            <AlertTriangle className="h-4 w-4" />
+            <AlertDescription>
+              Evolution API não configurada ou com erro. Configure e teste a conexão em <strong>APIs → Evolution API (Global)</strong> antes de criar conexões.
+            </AlertDescription>
+          </Alert>
+        )}
+        
+        {evolutionStatus === 'connected' && (
+          <Alert>
+            <CheckCircle className="h-4 w-4" />
+            <AlertDescription>
+              Evolution API conectada e pronta para criar novas conexões.
+            </AlertDescription>
+          </Alert>
+        )}
+        
         <form onSubmit={handleSubmit} className="space-y-6">
           <div className="space-y-4">
             <div className="space-y-2">
@@ -89,12 +137,14 @@ export const CreateConnectionModal = ({ open, onOpenChange, onConnectionCreated 
             <Button type="button" variant="outline" onClick={() => onOpenChange(false)} disabled={isLoading}>
               Cancelar
             </Button>
-            <Button type="submit" disabled={isLoading}>
+            <Button type="submit" disabled={isLoading || evolutionStatus !== 'connected'}>
               {isLoading ? (
                 <>
                   <Loader2 className="w-4 h-4 mr-2 animate-spin" />
                   Criando...
                 </>
+              ) : evolutionStatus !== 'connected' ? (
+                "Configure a Evolution API primeiro"
               ) : (
                 "Criar Conexão"
               )}
