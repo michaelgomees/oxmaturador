@@ -11,27 +11,6 @@ function normalizeBaseUrl(url: string) {
   return u.replace(/\/$/, '');
 }
 
-async function tryRequest(url: string, apiKey: string, method: string, body?: Record<string, unknown>) {
-  const init: RequestInit = {
-    method,
-    headers: {
-      'apikey': apiKey,
-      'Content-Type': 'application/json',
-    },
-    body: body ? JSON.stringify(body) : undefined,
-  };
-
-  const res = await fetch(url, init);
-  const text = await res.text();
-  let json: unknown = undefined;
-  try {
-    json = text ? JSON.parse(text) : undefined;
-  } catch {
-    // keep as text
-  }
-  return { ok: res.ok, status: res.status, url, method, requestBody: body, responseText: text, responseJson: json };
-}
-
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
@@ -58,62 +37,47 @@ serve(async (req) => {
     }
 
     const base = normalizeBaseUrl(baseUrl);
+    const url = `${base}/instance/create`;
+    
+    // Formato correto baseado na documentação oficial da Evolution API
+    const payload = {
+      instanceName: instanceName,
+      qrcode: true,
+      integration: "WHATSAPP-BAILEYS"
+    };
 
-    // Tentar múltiplos caminhos/métodos comuns da Evolution API
-    const candidates: Array<{ path: string; method: string; body?: Record<string, unknown> }> = [
-      // Rotas mais comuns da Evolution API
-      { path: '/instance/create', method: 'POST', body: { instanceName } },
-      { path: `/instance/create/${encodeURIComponent(instanceName)}`, method: 'POST' },
-      { path: '/manager/instances/create', method: 'POST', body: { instanceName } },
-      { path: '/instances/create', method: 'POST', body: { instanceName } },
-      { path: '/instance', method: 'POST', body: { instanceName } },
-      { path: '/instances', method: 'POST', body: { instanceName } },
-      { path: '/v1/instance/create', method: 'POST', body: { instanceName } },
-      { path: '/api/instance/create', method: 'POST', body: { instanceName } },
-      // Variações com diferentes parâmetros
-      { path: '/instance/create', method: 'POST', body: { name: instanceName } },
-      { path: '/instance/create', method: 'POST', body: { instance: instanceName } },
-      { path: '/manager/instances', method: 'POST', body: { instanceName } },
-      { path: '/manager/instances', method: 'POST', body: { name: instanceName } },
-    ];
+    console.log('Making request to Evolution API:', { url, payload });
 
-    const attempts: any[] = [];
-    let successResult: any = null;
+    const response = await fetch(url, {
+      method: 'POST',
+      headers: {
+        'apikey': apiKey,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(payload),
+    });
 
-    for (const c of candidates) {
-      const url = `${base}${c.path}`;
-      console.log('Trying Evolution endpoint:', { url, method: c.method, body: c.body });
-      try {
-        const result = await tryRequest(url, apiKey, c.method, c.body);
-        attempts.push({ url: result.url, method: result.method, status: result.status, response: result.responseJson ?? result.responseText, requestBody: result.requestBody });
-        console.log('Attempt result:', { url: result.url, status: result.status });
-        if (result.ok) {
-          successResult = { endpoint: url, status: result.status, data: result.responseJson ?? result.responseText };
-          break;
-        }
-      } catch (e) {
-        attempts.push({ url, method: c.method, error: String(e) });
-        console.error('Attempt error:', url, e);
-      }
-    }
+    console.log('Evolution API response status:', response.status);
 
-    if (!successResult) {
-      console.error('All Evolution endpoints failed');
+    if (!response.ok) {
+      const text = await response.text();
+      console.error('Evolution API error response:', { status: response.status, text });
       return new Response(
-        JSON.stringify({
-          success: false,
-          message: 'Falha ao criar instância na Evolution (todas as tentativas falharam).',
-          instanceName,
-          tried: attempts,
+        JSON.stringify({ 
+          success: false, 
+          message: `Erro Evolution: ${response.status}`, 
+          details: text,
+          endpoint: url 
         }),
         { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
 
-    console.log('Evolution API success response on:', successResult.endpoint);
+    const data = await response.json().catch(() => ({}));
+    console.log('Evolution API success response:', data);
 
     return new Response(
-      JSON.stringify({ success: true, instanceName, endpointUsed: successResult.endpoint, data: successResult.data }),
+      JSON.stringify({ success: true, instanceName, data, endpoint: url }),
       { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
   } catch (error) {
