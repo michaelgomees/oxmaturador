@@ -169,11 +169,8 @@ const Index = () => {
                       return (
                         <ConnectionCard
                           key={connection.id}
-                          connection={connectionForCard}
-                          isSelected={selectedConnection === connection.id}
-                          onSelect={() => setSelectedConnection(connection.id)}
+                          connectionData={connection}
                           onGenerateQR={() => handleGenerateQRCode(connection.id, connection.nome, connection.config?.telefone || 'Não conectado')}
-                          onConnectionUpdated={handleConnectionCreated}
                         />
                       );
                   })}

@@ -402,6 +402,69 @@ export const useConnections = () => {
     }
   }, [user?.id]);
 
+  // Atualizar dados da conexão com informações da Evolution API
+  const updateConnectionData = async (connectionId: string): Promise<void> => {
+    try {
+      const connection = connections.find(c => c.id === connectionId);
+      if (!connection) return;
+
+      let config = connection.config;
+      if (typeof config === 'string') {
+        try {
+          config = JSON.parse(config);
+        } catch (e) {
+          console.error('Erro ao fazer parse da config:', e);
+          return;
+        }
+      }
+
+      if (!config.evolutionInstance) return;
+
+      const evolutionConfig = JSON.parse(localStorage.getItem('ox-evolution-api') || '{}');
+      if (!evolutionConfig.endpoint) return;
+
+      const { data, error } = await supabase.functions.invoke('evolution-get-instance', {
+        body: {
+          baseUrl: evolutionConfig.endpoint,
+          instanceName: config.evolutionInstance
+        }
+      });
+
+      if (error || !data.success) {
+        console.error('Erro ao obter dados da instância:', error || data);
+        return;
+      }
+
+      // Atualizar a conexão com os novos dados
+      const updatedConfig = {
+        ...config,
+        phoneNumber: data.phoneNumber,
+        profilePicture: data.profilePicture,
+        displayName: data.displayName,
+        connectionState: data.status
+      };
+
+      await updateConnection(connectionId, {
+        config: updatedConfig
+      });
+
+      // Atualizar o estado local
+      setConnections(prev => prev.map(conn => 
+        conn.id === connectionId 
+          ? { ...conn, config: updatedConfig }
+          : conn
+      ));
+
+      toast({
+        title: "Dados atualizados",
+        description: "Informações da conexão foram atualizadas com sucesso",
+      });
+
+    } catch (error) {
+      console.error('Erro ao atualizar dados da conexão:', error);
+    }
+  };
+
   return {
     connections,
     isLoading,
@@ -410,6 +473,7 @@ export const useConnections = () => {
     deleteConnection,
     createEvolutionInstance,
     getConnectionQRCode,
+    updateConnectionData,
     refetch: fetchConnections
   };
 };
