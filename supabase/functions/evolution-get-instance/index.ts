@@ -119,10 +119,28 @@ serve(async (req) => {
     }
 
     // Extrair dados relevantes
-    const phoneNumber = instanceData.owner || instanceData.phone || instanceData.number || null;
-    const profilePicture = instanceData.profilePicture || instanceData.picture || instanceData.avatar || null;
-    const status = instanceData.state || instanceData.status || instanceData.connectionState || 'disconnected';
-    const displayName = instanceData.displayName || instanceData.pushname || instanceData.name || null;
+    let phoneNumber = instanceData.owner || instanceData.phone || instanceData.number || null;
+    
+    // Extrair número do ownerJid se não encontrou em outros campos
+    if (!phoneNumber && instanceData.ownerJid) {
+      // ownerJid vem no formato "558398286178@s.whatsapp.net"
+      const jidMatch = instanceData.ownerJid.match(/^(\d+)@/);
+      if (jidMatch) {
+        phoneNumber = jidMatch[1];
+        // Formatar o número brasileiro se tiver 13 dígitos (55 + DDD + número)
+        if (phoneNumber.startsWith('55') && phoneNumber.length === 13) {
+          const countryCode = phoneNumber.substring(0, 2);
+          const areaCode = phoneNumber.substring(2, 4);
+          const number = phoneNumber.substring(4);
+          phoneNumber = `+${countryCode} (${areaCode}) ${number.substring(0, 5)}-${number.substring(5)}`;
+        }
+      }
+    }
+    
+    const profilePicture = instanceData.profilePicUrl || instanceData.profilePicture || instanceData.picture || instanceData.avatar || null;
+    const status = instanceData.connectionStatus === 'open' ? 'connected' : 
+                  instanceData.connectionStatus || instanceData.state || instanceData.status || 'disconnected';
+    const displayName = instanceData.profileName || instanceData.displayName || instanceData.pushname || instanceData.name || null;
 
     console.log('Instance data extracted:', { phoneNumber, profilePicture, status, displayName });
 
