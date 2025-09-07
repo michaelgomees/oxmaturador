@@ -1,14 +1,12 @@
-import { supabase } from "./supabase";
+import api from "./api";
 
 export async function getConexoesAtivas() {
-  const { data, error } = await supabase
-    .from("conexoes") // tabela onde estão os chips
-    .select("id, nome") // pega só id e nome
-    .eq("status", "ativa"); // só conexões ativas
-
-  if (error) {
-    console.error("Erro ao buscar conexões:", error.message);
+  try {
+    const response = await api.get('/connections/active');
+    return response.data;
+  } catch (error) {
+    console.error("Erro ao buscar conexões ativas:", error);
+    // Retorna um array vazio em caso de erro para evitar quebrar o app
     return [];
   }
-  return data || [];
 }
