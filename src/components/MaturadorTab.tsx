@@ -34,7 +34,7 @@ interface ActiveConnection {
   platform: string;
 }
 
-// Hook para buscar conexões ativas (mock por enquanto)
+// Hook para buscar conexões ativas (mock enquanto a API não existe)
 const useActiveConnections = () => {
   const [connections, setConnections] = useState<ActiveConnection[]>([]);
   const [loading, setLoading] = useState(true);
@@ -42,24 +42,11 @@ const useActiveConnections = () => {
   useEffect(() => {
     const fetchActiveConnections = async () => {
       try {
-        // TODO: Substituir pelo backend real
+        // Mock local (retire este bloco quando a API real estiver pronta)
         const mockConnections: ActiveConnection[] = [
-          {
-            id: "1",
-            name: "Chip 1",
-            status: "connected",
-            lastSeen: new Date().toISOString(),
-            platform: "whatsapp",
-          },
-          {
-            id: "2",
-            name: "Chip 2",
-            status: "connected",
-            lastSeen: new Date().toISOString(),
-            platform: "telegram",
-          },
+          { id: "1", name: "Chip 1", status: "connected", lastSeen: new Date().toISOString(), platform: "whatsapp" },
+          { id: "2", name: "Chip 2", status: "connected", lastSeen: new Date().toISOString(), platform: "telegram" },
         ];
-
         setConnections(mockConnections);
       } catch (error) {
         console.error("Erro ao buscar conexões ativas:", error);
@@ -331,7 +318,9 @@ export const MaturadorTab = () => {
             <Settings className="w-8 h-8 text-accent" />
             <div>
               <p className="text-sm text-muted-foreground">Status Sistema</p>
-              <p className="text-2xl font-bold">{config.isRunning ? "ON" : "OFF"}</p>
+              <p className="text-2xl font-bold">
+                {config.isRunning ? "ON" : "OFF"}
+              </p>
             </div>
           </CardContent>
         </Card>
@@ -456,10 +445,7 @@ export const MaturadorTab = () => {
               <Select
                 value={config.maxMessagesPerSession.toString()}
                 onValueChange={(value) =>
-                  saveConfig({
-                    ...config,
-                    maxMessagesPerSession: parseInt(value),
-                  })
+                  saveConfig({ ...config, maxMessagesPerSession: parseInt(value) })
                 }
               >
                 <SelectTrigger>
@@ -525,4 +511,33 @@ export const MaturadorTab = () => {
                             <p className="font-medium">
                               {pair.messagesExchanged} mensagens
                             </p>
-                            <p className="
+                            <p className="text-xs text-muted-foreground">
+                              {new Date(pair.lastActivity).toLocaleTimeString()}
+                            </p>
+                          </div>
+
+                          <Switch
+                            checked={pair.isActive}
+                            onCheckedChange={() => handleTogglePair(pair.id)}
+                          />
+
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={() => handleRemovePair(pair.id)}
+                          >
+                            <Pause className="w-4 h-4" />
+                          </Button>
+                        </div>
+                      </div>
+                    </CardContent>
+                  </Card>
+                ))}
+              </div>
+            </ScrollArea>
+          )}
+        </CardContent>
+      </Card>
+    </div>
+  );
+};
