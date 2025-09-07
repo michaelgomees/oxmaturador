@@ -7,8 +7,9 @@ import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Play, Pause, Square, Users, MessageCircle, ArrowRight, Settings, Activity, Star, Brain } from "lucide-react";
+import { Play, Pause, Square, Users, MessageCircle, ArrowRight, Settings, Activity, Wifi } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import api from "@/lib/api";
 
 interface ChipPair {
   id: string;
@@ -18,42 +19,75 @@ interface ChipPair {
   messagesExchanged: number;
   lastActivity: string;
   status: 'running' | 'paused' | 'stopped';
-  useInstancePrompt: boolean;
-  selectedPromptId?: string;
 }
 
 interface MaturadorConfig {
   isRunning: boolean;
   selectedPairs: ChipPair[];
-  useGlobalPrompt: boolean;
-  globalPromptId?: string;
+  conversationInterval: number;
+  maxMessagesPerSession: number;
+  useBasePrompt: boolean;
 }
 
-interface AIPrompt {
+interface ActiveConnection {
   id: string;
   name: string;
-  content: string;
-  category: string;
-  isGlobal?: boolean;
+  status: 'connected' | 'disconnected';
+  lastSeen: string;
+  platform: string;
 }
 
-const AVAILABLE_CHIPS = [
-  'Alex Marketing',
-  'Sofia Suporte', 
-  'João Vendas',
-  'Ana Atendimento',
-  'Carlos Técnico'
-];
+// Hook para buscar conexões ativas da API
+const useActiveConnections = () => {
+  const [connections, setConnections] = useState<ActiveConnection[]>([]);
+  const [loading, setLoading] = useState(true);
 
+  useEffect(() => {
+    const fetchActiveConnections = async () => {
+      try {
+        // Substituído o mock data pela chamada real da API
+        const response = await api.get('/connections/active');
+        const data = response.data;
+        
+        // Mapeia os dados da API para o formato esperado pela interface
+        const formattedConnections: ActiveConnection[] = data.map((conn: any) => ({
+          id: conn.fid,
+          name: conn.nome,
+          status: conn.status,
+          lastSeen: conn.lastSeen,
+          platform: conn.platform
+        }));
+
+        setConnections(formattedConnections);
+
+      } catch (error) {
+        console.error('Erro ao buscar conexões ativas:', error);
+        setConnections([]);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchActiveConnections();
+    
+    // Atualizar a cada 30 segundos
+    const interval = setInterval(fetchActiveConnections, 30000);
+    return () => clearInterval(interval);
+  }, []);
+
+  return { connections, loading };
+};
 
 export const EnhancedMaturadorTab = () => {
+  const { connections, loading } = useActiveConnections();
   const [config, setConfig] = useState<MaturadorConfig>({
     isRunning: false,
     selectedPairs: [],
-    useGlobalPrompt: true
+    conversationInterval: 30,
+    maxMessagesPerSession: 10,
+    useBasePrompt: true
   });
   
-  const [availablePrompts, setAvailablePrompts] = useState<AIPrompt[]>([]);
   const [newPair, setNewPair] = useState({
     chip1: '',
     chip2: ''
@@ -61,16 +95,11 @@ export const EnhancedMaturadorTab = () => {
   
   const { toast } = useToast();
 
-  // Carregar configuração e prompts do localStorage
+  // Carregar configuração do localStorage
   useEffect(() => {
     const savedConfig = localStorage.getItem('ox-maturador-config');
     if (savedConfig) {
       setConfig(JSON.parse(savedConfig));
-    }
-
-    const savedPrompts = localStorage.getItem('ox-ai-prompts');
-    if (savedPrompts) {
-      setAvailablePrompts(JSON.parse(savedPrompts));
     }
   }, []);
 
@@ -113,8 +142,7 @@ export const EnhancedMaturadorTab = () => {
       isActive: true,
       messagesExchanged: 0,
       lastActivity: new Date().toISOString(),
-      status: 'stopped',
-      useInstancePrompt: false
+      status: 'stopped'
     };
 
     const updatedConfig = {
@@ -153,33 +181,6 @@ export const EnhancedMaturadorTab = () => {
             status: (!pair.isActive ? 'running' : 'paused') as ChipPair['status'],
             lastActivity: new Date().toISOString()
           }
-        : pair
-    );
-    
-    const updatedConfig = { ...config, selectedPairs: updatedPairs };
-    saveConfig(updatedConfig);
-  };
-
-  const handleToggleInstancePrompt = (pairId: string) => {
-    const updatedPairs = config.selectedPairs.map(pair => 
-      pair.id === pairId 
-        ? { ...pair, useInstancePrompt: !pair.useInstancePrompt }
-        : pair
-    );
-    
-    const updatedConfig = { ...config, selectedPairs: updatedPairs };
-    saveConfig(updatedConfig);
-    
-    toast({
-      title: "Configuração atualizada",
-      description: "Opção de prompt por instância alterada."
-    });
-  };
-
-  const handleSetPairPrompt = (pairId: string, promptId: string) => {
-    const updatedPairs = config.selectedPairs.map(pair => 
-      pair.id === pairId 
-        ? { ...pair, selectedPromptId: promptId }
         : pair
     );
     
@@ -239,21 +240,19 @@ export const EnhancedMaturadorTab = () => {
   };
 
   const getAvailableChipsForSecond = (selectedFirst: string) => {
-    return AVAILABLE_CHIPS.filter(chip => chip !== selectedFirst);
+    return connections.filter(connection => 
+      connection.status === 'connected' && connection.name !== selectedFirst
+    );
   };
-
-
-  const globalPrompt = availablePrompts.find(p => p.isGlobal);
-  const activePairsCount = config.selectedPairs.filter(p => p.status === 'running').length;
 
   return (
     <div className="space-y-6">
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h2 className="text-2xl font-bold">Maturador de Chips</h2>
+          <h2 className="text-2xl font-bold">Iniciar Maturador</h2>
           <p className="text-muted-foreground">
-            Configure conversas automáticas inteligentes entre chips com prompts personalizados
+            Configure conversas automáticas entre conexões ativas para simular diálogos naturais
           </p>
         </div>
         <div className="flex items-center gap-4">
@@ -299,7 +298,7 @@ export const EnhancedMaturadorTab = () => {
             <Activity className="w-8 h-8 text-green-500" />
             <div>
               <p className="text-sm text-muted-foreground">Duplas Ativas</p>
-              <p className="text-2xl font-bold">{activePairsCount}</p>
+              <p className="text-2xl font-bold">{config.selectedPairs.filter(p => p.status === 'running').length}</p>
             </div>
           </CardContent>
         </Card>
@@ -329,7 +328,7 @@ export const EnhancedMaturadorTab = () => {
           <CardHeader>
             <CardTitle>Configurar Nova Dupla</CardTitle>
             <CardDescription>
-              Selecione dois chips que irão conversar entre si
+              Selecione duas conexões ativas que irão conversar entre si
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
@@ -344,11 +343,21 @@ export const EnhancedMaturadorTab = () => {
                     <SelectValue placeholder="Selecione o primeiro chip" />
                   </SelectTrigger>
                   <SelectContent>
-                    {AVAILABLE_CHIPS.map(chip => (
-                      <SelectItem key={chip} value={chip}>
-                        {chip}
-                      </SelectItem>
-                    ))}
+                    {loading ? (
+                      <SelectItem value="" disabled>Carregando conexões...</SelectItem>
+                    ) : connections.filter(conn => conn.status === 'connected').length === 0 ? (
+                      <SelectItem value="" disabled>Nenhuma conexão ativa</SelectItem>
+                    ) : (
+                      connections.filter(conn => conn.status === 'connected').map(connection => (
+                        <SelectItem key={connection.id} value={connection.name}>
+                          <div className="flex items-center gap-2">
+                            <Wifi className="w-3 h-3 text-green-500" />
+                            {connection.name}
+                            <Badge variant="outline" className="text-xs">{connection.platform}</Badge>
+                          </div>
+                        </SelectItem>
+                      ))
+                    )}
                   </SelectContent>
                 </Select>
               </div>
@@ -368,11 +377,21 @@ export const EnhancedMaturadorTab = () => {
                     <SelectValue placeholder="Selecione o segundo chip" />
                   </SelectTrigger>
                   <SelectContent>
-                    {getAvailableChipsForSecond(newPair.chip1).map(chip => (
-                      <SelectItem key={chip} value={chip}>
-                        {chip}
-                      </SelectItem>
-                    ))}
+                    {loading ? (
+                      <SelectItem value="" disabled>Carregando conexões...</SelectItem>
+                    ) : getAvailableChipsForSecond(newPair.chip1).length === 0 ? (
+                      <SelectItem value="" disabled>Nenhuma conexão disponível</SelectItem>
+                    ) : (
+                      getAvailableChipsForSecond(newPair.chip1).map(connection => (
+                        <SelectItem key={connection.id} value={connection.name}>
+                          <div className="flex items-center gap-2">
+                            <Wifi className="w-3 h-3 text-green-500" />
+                            {connection.name}
+                            <Badge variant="outline" className="text-xs">{connection.platform}</Badge>
+                          </div>
+                        </SelectItem>
+                      ))
+                    )}
                   </SelectContent>
                 </Select>
               </div>
@@ -389,48 +408,58 @@ export const EnhancedMaturadorTab = () => {
           </CardContent>
         </Card>
 
-        {/* Configurações do Maturador */}
+        {/* Configurações Avançadas */}
         <Card>
           <CardHeader>
             <CardTitle>Configurações do Maturador</CardTitle>
             <CardDescription>
-              Parâmetros globais para as conversas automáticas
+              Parâmetros gerais para as conversas automáticas
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
-            <div className="space-y-4">
-              <div className="flex items-center justify-between">
-                <Label>Configuração de Prompts</Label>
-                {globalPrompt && (
-                  <Badge className="bg-yellow-500/20 text-yellow-700 border-yellow-500/30">
-                    <Star className="w-3 h-3 mr-1" />
-                    Global Disponível
-                  </Badge>
-                )}
-              </div>
-              
-              <div className="flex items-center space-x-2">
-                <Switch
-                  checked={config.useGlobalPrompt}
-                  onCheckedChange={(checked) => saveConfig({ ...config, useGlobalPrompt: checked })}
-                />
-                <Label>Usar prompt global de IA</Label>
-              </div>
-              
-              {globalPrompt && config.useGlobalPrompt && (
-                <div className="bg-muted/50 rounded-lg p-3">
-                  <p className="text-sm font-medium mb-1">Prompt Global Ativo:</p>
-                  <p className="text-sm text-muted-foreground">{globalPrompt.name}</p>
-                </div>
-              )}
-              
-              {!config.useGlobalPrompt && (
-                <div className="bg-orange-50 border border-orange-200 rounded-lg p-3">
-                  <p className="text-sm text-orange-800">
-                    💡 Com esta opção desabilitada, você pode configurar prompts específicos para cada dupla
-                  </p>
-                </div>
-              )}
+            <div className="space-y-2">
+              <Label>Intervalo entre mensagens (segundos)</Label>
+              <Select 
+                value={config.conversationInterval.toString()} 
+                onValueChange={(value) => saveConfig({ ...config, conversationInterval: parseInt(value) })}
+              >
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="15">15 segundos</SelectItem>
+                  <SelectItem value="30">30 segundos</SelectItem>
+                  <SelectItem value="60">1 minuto</SelectItem>
+                  <SelectItem value="120">2 minutos</SelectItem>
+                  <SelectItem value="300">5 minutos</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            
+            <div className="space-y-2">
+              <Label>Máximo de mensagens por sessão</Label>
+              <Select 
+                value={config.maxMessagesPerSession.toString()} 
+                onValueChange={(value) => saveConfig({ ...config, maxMessagesPerSession: parseInt(value) })}
+              >
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="5">5 mensagens</SelectItem>
+                  <SelectItem value="10">10 mensagens</SelectItem>
+                  <SelectItem value="20">20 mensagens</SelectItem>
+                  <SelectItem value="50">50 mensagens</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            
+            <div className="flex items-center space-x-2">
+              <Switch
+                checked={config.useBasePrompt}
+                onCheckedChange={(checked) => saveConfig({ ...config, useBasePrompt: checked })}
+              />
+              <Label>Usar prompt base das APIs de IA</Label>
             </div>
           </CardContent>
         </Card>
@@ -441,7 +470,7 @@ export const EnhancedMaturadorTab = () => {
         <CardHeader>
           <CardTitle>Duplas Configuradas ({config.selectedPairs.length})</CardTitle>
           <CardDescription>
-            Gerencie as duplas de chips e suas configurações de prompt
+            Gerencie as duplas de chips que estão conversando
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -459,105 +488,50 @@ export const EnhancedMaturadorTab = () => {
                 {config.selectedPairs.map((pair) => (
                   <Card key={pair.id} className="border-l-4 border-l-primary/30">
                     <CardContent className="p-4">
-                      <div className="space-y-4">
-                        <div className="flex items-center justify-between">
-                          <div className="flex items-center gap-4">
-                            <div className="flex items-center gap-2">
-                              <Badge variant="outline">{pair.chip1}</Badge>
-                              <ArrowRight className="w-4 h-4 text-muted-foreground" />
-                              <Badge variant="outline">{pair.chip2}</Badge>
-                            </div>
-                            {getStatusBadge(pair.status)}
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-4">
+                          <div className="flex items-center gap-2">
+                            <Badge variant="outline">{pair.chip1}</Badge>
+                            <ArrowRight className="w-4 h-4 text-muted-foreground" />
+                            <Badge variant="outline">{pair.chip2}</Badge>
+                          </div>
+                          {getStatusBadge(pair.status)}
+                        </div>
+                        
+                        <div className="flex items-center gap-2">
+                          <div className="text-right text-sm">
+                            <p className="font-medium">{pair.messagesExchanged} mensagens</p>
+                            <p className="text-xs text-muted-foreground">
+                              {new Date(pair.lastActivity).toLocaleTimeString('pt-BR')}
+                            </p>
                           </div>
                           
-                          <div className="flex items-center gap-2">
-                            <div className="text-right text-sm">
-                              <p className="font-medium">{pair.messagesExchanged} mensagens</p>
-                              <p className="text-xs text-muted-foreground">
-                                {new Date(pair.lastActivity).toLocaleTimeString('pt-BR')}
-                              </p>
-                            </div>
-                            
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              onClick={() => handleTogglePair(pair.id)}
-                            >
-                              {pair.isActive ? (
-                                <>
-                                  <Pause className="w-4 h-4 mr-2" />
-                                  Pausar
-                                </>
-                              ) : (
-                                <>
-                                  <Play className="w-4 h-4 mr-2" />
-                                  Ativar
-                                </>
-                              )}
-                            </Button>
-                            
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              onClick={() => handleRemovePair(pair.id)}
-                            >
-                              Remover
-                            </Button>
-                          </div>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => handleTogglePair(pair.id)}
+                          >
+                            {pair.isActive ? (
+                              <>
+                                <Pause className="w-4 h-4 mr-2" />
+                                Pausar
+                              </>
+                            ) : (
+                              <>
+                                <Play className="w-4 h-4 mr-2" />
+                                Ativar
+                              </>
+                            )}
+                          </Button>
+                          
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => handleRemovePair(pair.id)}
+                          >
+                            Remover
+                          </Button>
                         </div>
-
-                        {/* Configuração de Prompt por Instância */}
-                        {!config.useGlobalPrompt && (
-                          <>
-                            <Separator />
-                            <div className="space-y-3">
-                              <div className="flex items-center justify-between">
-                                <Label>Configuração de Prompt para esta Dupla</Label>
-                                <Switch
-                                  checked={pair.useInstancePrompt}
-                                  onCheckedChange={() => handleToggleInstancePrompt(pair.id)}
-                                />
-                              </div>
-                              
-                              {pair.useInstancePrompt && (
-                                <div className="space-y-2">
-                                  <Label>Selecionar Prompt Específico</Label>
-                                  <Select
-                                    value={pair.selectedPromptId || ''}
-                                    onValueChange={(value) => handleSetPairPrompt(pair.id, value)}
-                                  >
-                                    <SelectTrigger>
-                                      <SelectValue placeholder="Escolha um prompt..." />
-                                    </SelectTrigger>
-                                    <SelectContent>
-                                      {availablePrompts.map(prompt => (
-                                        <SelectItem key={prompt.id} value={prompt.id}>
-                                          {prompt.name} ({prompt.category})
-                                        </SelectItem>
-                                      ))}
-                                    </SelectContent>
-                                  </Select>
-                                  
-                                  {pair.selectedPromptId && (
-                                    <div className="bg-muted/50 rounded p-2">
-                                      <p className="text-xs text-muted-foreground">
-                                        Prompt selecionado para esta dupla específica
-                                      </p>
-                                    </div>
-                                  )}
-                                </div>
-                              )}
-                              
-                              {!pair.useInstancePrompt && (
-                                <div className="bg-blue-50 border border-blue-200 rounded p-2">
-                                  <p className="text-xs text-blue-800">
-                                    Esta dupla usará as configurações padrão do maturador
-                                  </p>
-                                </div>
-                              )}
-                            </div>
-                          </>
-                        )}
                       </div>
                     </CardContent>
                   </Card>
