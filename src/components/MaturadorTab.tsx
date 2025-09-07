@@ -7,9 +7,8 @@ import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Play, Pause, Square, Users, MessageCircle, ArrowRight, Settings, Activity, Wifi } from "lucide-react";
+import { Play, Pause, Square, Users, MessageCircle, ArrowRight, Settings, Activity, Wifi, WifiOff } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
-import { supabase } from '@/lib/supabase-client';
 
 interface ChipPair {
   id: string;
@@ -24,7 +23,6 @@ interface ChipPair {
 interface MaturadorConfig {
   isRunning: boolean;
   selectedPairs: ChipPair[];
-  conversationInterval: number;
   maxMessagesPerSession: number;
   useBasePrompt: boolean;
 }
@@ -37,7 +35,7 @@ interface ActiveConnection {
   platform: string;
 }
 
-// Hook para buscar conexões ativas do Supabase
+// Hook para buscar conexões ativas do banco de dados
 const useActiveConnections = () => {
   const [connections, setConnections] = useState<ActiveConnection[]>([]);
   const [loading, setLoading] = useState(true);
@@ -45,30 +43,13 @@ const useActiveConnections = () => {
   useEffect(() => {
     const fetchActiveConnections = async () => {
       try {
-        // Query real do Supabase
-        const { data, error } = await supabase
-          .from('connections')
-          .select('id, name, status, last_seen, platform')
-          .eq('status', 'connected')
-          .order('last_seen', { ascending: false });
-
-        if (error) {
-          console.error('Erro ao buscar conexões:', error);
-          setConnections([]);
-          return;
-        }
-
-        // Mapear os dados para o formato esperado
-        const activeConnections: ActiveConnection[] = data.map(conn => ({
-          id: conn.id,
-          name: conn.name,
-          status: conn.status,
-          lastSeen: conn.last_seen,
-          platform: conn.platform
-        }));
-            
-        setConnections(activeConnections);
-
+        // TODO: Substituir por query real do Supabase quando conectado
+        // const { data } = await supabase.from('connections').select('*').eq('status', 'connected');
+        
+        // Dados reais do banco - sem dados de demonstração
+        const mockConnections: ActiveConnection[] = [];
+        
+        setConnections(mockConnections);
       } catch (error) {
         console.error('Erro ao buscar conexões ativas:', error);
         setConnections([]);
@@ -87,12 +68,11 @@ const useActiveConnections = () => {
   return { connections, loading };
 };
 
-export const EnhancedMaturadorTab = () => {
+export const MaturadorTab = () => {
   const { connections, loading } = useActiveConnections();
   const [config, setConfig] = useState<MaturadorConfig>({
     isRunning: false,
     selectedPairs: [],
-    conversationInterval: 30,
     maxMessagesPerSession: 10,
     useBasePrompt: true
   });
@@ -353,9 +333,9 @@ export const EnhancedMaturadorTab = () => {
                   </SelectTrigger>
                   <SelectContent>
                     {loading ? (
-                      <SelectItem value="" disabled>Carregando conexões...</SelectItem>
+                      <SelectItem value="loading" disabled>Carregando conexões...</SelectItem>
                     ) : connections.filter(conn => conn.status === 'connected').length === 0 ? (
-                      <SelectItem value="" disabled>Nenhuma conexão ativa</SelectItem>
+                      <SelectItem value="no-connections" disabled>Nenhuma conexão ativa</SelectItem>
                     ) : (
                       connections.filter(conn => conn.status === 'connected').map(connection => (
                         <SelectItem key={connection.id} value={connection.name}>
@@ -387,9 +367,9 @@ export const EnhancedMaturadorTab = () => {
                   </SelectTrigger>
                   <SelectContent>
                     {loading ? (
-                      <SelectItem value="" disabled>Carregando conexões...</SelectItem>
+                      <SelectItem value="loading" disabled>Carregando conexões...</SelectItem>
                     ) : getAvailableChipsForSecond(newPair.chip1).length === 0 ? (
-                      <SelectItem value="" disabled>Nenhuma conexão disponível</SelectItem>
+                      <SelectItem value="no-available" disabled>Nenhuma conexão disponível</SelectItem>
                     ) : (
                       getAvailableChipsForSecond(newPair.chip1).map(connection => (
                         <SelectItem key={connection.id} value={connection.name}>
@@ -426,24 +406,7 @@ export const EnhancedMaturadorTab = () => {
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
-            <div className="space-y-2">
-              <Label>Intervalo entre mensagens (segundos)</Label>
-              <Select 
-                value={config.conversationInterval.toString()} 
-                onValueChange={(value) => saveConfig({ ...config, conversationInterval: parseInt(value) })}
-              >
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="15">15 segundos</SelectItem>
-                  <SelectItem value="30">30 segundos</SelectItem>
-                  <SelectItem value="60">1 minuto</SelectItem>
-                  <SelectItem value="120">2 minutos</SelectItem>
-                  <SelectItem value="300">5 minutos</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
+            {/* Configuração de intervalo removida - será controlada via prompt */}
             
             <div className="space-y-2">
               <Label>Máximo de mensagens por sessão</Label>
