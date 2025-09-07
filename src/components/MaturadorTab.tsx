@@ -9,6 +9,7 @@ import { Separator } from "@/components/ui/separator";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Play, Pause, Square, Users, MessageCircle, ArrowRight, Settings, Activity } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { getConexoesAtivas } from "@/lib/queries"; // Ajuste o caminho se necessário
 
 interface ChipPair {
   id: string;
@@ -42,7 +43,22 @@ export const MaturadorTab = () => {
     chip2: ''
   });
   
+  const [availableChips, setAvailableChips] = useState<{ id: string; nome: string }[]>([]);
+  
   const { toast } = useToast();
+
+  // Carregar dados de chips dinâmicos
+  useEffect(() => {
+    async function loadChips() {
+      try {
+        const chips = await getConexoesAtivas();
+        setAvailableChips(chips);
+      } catch (error) {
+        console.error("Falha ao carregar os chips:", error);
+      }
+    }
+    loadChips();
+  }, []);
 
   // Carregar configuração do localStorage
   useEffect(() => {
@@ -189,7 +205,7 @@ export const MaturadorTab = () => {
   };
 
   const getAvailableChipsForSecond = (selectedFirst: string) => {
-    return AVAILABLE_CHIPS.filter(chip => chip !== selectedFirst);
+    return availableChips.filter(chip => chip.nome !== selectedFirst);
   };
 
   return (
@@ -290,9 +306,9 @@ export const MaturadorTab = () => {
                     <SelectValue placeholder="Selecione o primeiro chip" />
                   </SelectTrigger>
                   <SelectContent>
-                    {AVAILABLE_CHIPS.map(chip => (
-                      <SelectItem key={chip} value={chip}>
-                        {chip}
+                    {availableChips.map(chip => (
+                      <SelectItem key={chip.id} value={chip.nome}>
+                        {chip.nome}
                       </SelectItem>
                     ))}
                   </SelectContent>
@@ -315,8 +331,8 @@ export const MaturadorTab = () => {
                   </SelectTrigger>
                   <SelectContent>
                     {getAvailableChipsForSecond(newPair.chip1).map(chip => (
-                      <SelectItem key={chip} value={chip}>
-                        {chip}
+                      <SelectItem key={chip.id} value={chip.nome}>
+                        {chip.nome}
                       </SelectItem>
                     ))}
                   </SelectContent>
