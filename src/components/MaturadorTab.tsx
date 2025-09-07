@@ -28,14 +28,6 @@ interface MaturadorConfig {
   useBasePrompt: boolean;
 }
 
-const AVAILABLE_CHIPS = [
-  'Alex Marketing',
-  'Sofia Suporte', 
-  'João Vendas',
-  'Ana Atendimento',
-  'Carlos Técnico'
-];
-
 export const MaturadorTab = () => {
   const [config, setConfig] = useState<MaturadorConfig>({
     isRunning: false,
