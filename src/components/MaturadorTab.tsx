@@ -9,7 +9,7 @@ import { Separator } from "@/components/ui/separator";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Play, Pause, Square, Users, MessageCircle, ArrowRight, Settings, Activity } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
-import { getConexoesAtivas } from "@/lib/queries"; // Ajuste o caminho se necessário
+import { getConexoesAtivas } from "@/lib/queries";
 
 interface ChipPair {
   id: string;
@@ -43,7 +43,7 @@ export const MaturadorTab = () => {
     chip2: ''
   });
   
-  const [availableChips, setAvailableChips] = useState<{ id: string; nome: string }[]>([]);
+  const [availableChips, setAvailableChips] = useState<{ fid: string; nome: string }[]>([]);
   
   const { toast } = useToast();
 
@@ -307,7 +307,7 @@ export const MaturadorTab = () => {
                   </SelectTrigger>
                   <SelectContent>
                     {availableChips.map(chip => (
-                      <SelectItem key={chip.id} value={chip.nome}>
+                      <SelectItem key={chip.fid} value={chip.nome}>
                         {chip.nome}
                       </SelectItem>
                     ))}
@@ -331,7 +331,7 @@ export const MaturadorTab = () => {
                   </SelectTrigger>
                   <SelectContent>
                     {getAvailableChipsForSecond(newPair.chip1).map(chip => (
-                      <SelectItem key={chip.id} value={chip.nome}>
+                      <SelectItem key={chip.fid} value={chip.nome}>
                         {chip.nome}
                       </SelectItem>
                     ))}
