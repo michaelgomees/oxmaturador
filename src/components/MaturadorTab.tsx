@@ -9,7 +9,7 @@ import { Separator } from "@/components/ui/separator";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Play, Pause, Square, Users, MessageCircle, ArrowRight, Settings, Activity, Wifi } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
-import api from "@/lib/api"; // Importe a instância da sua API
+import { supabase } from '@/lib/supabase-client';
 
 interface ChipPair {
   id: string;
@@ -37,7 +37,7 @@ interface ActiveConnection {
   platform: string;
 }
 
-// Hook para buscar conexões ativas da API
+// Hook para buscar conexões ativas do Supabase
 const useActiveConnections = () => {
   const [connections, setConnections] = useState<ActiveConnection[]>([]);
   const [loading, setLoading] = useState(true);
@@ -45,20 +45,29 @@ const useActiveConnections = () => {
   useEffect(() => {
     const fetchActiveConnections = async () => {
       try {
-        // Substituído o mock data pela chamada real da API
-        const response = await api.get('/connections/active');
-        const data = response.data;
-        
-        // Mapeia os dados da API para o formato esperado pela interface
-        const formattedConnections: ActiveConnection[] = data.map((conn: any) => ({
-          id: conn.fid, // Usa fid como id, conforme a API anterior
-          name: conn.nome, // Usa nome como name, conforme a API anterior
+        // Query real do Supabase
+        const { data, error } = await supabase
+          .from('connections')
+          .select('id, name, status, last_seen, platform')
+          .eq('status', 'connected')
+          .order('last_seen', { ascending: false });
+
+        if (error) {
+          console.error('Erro ao buscar conexões:', error);
+          setConnections([]);
+          return;
+        }
+
+        // Mapear os dados para o formato esperado
+        const activeConnections: ActiveConnection[] = data.map(conn => ({
+          id: conn.id,
+          name: conn.name,
           status: conn.status,
-          lastSeen: conn.lastSeen,
+          lastSeen: conn.last_seen,
           platform: conn.platform
         }));
-
-        setConnections(formattedConnections);
+            
+        setConnections(activeConnections);
 
       } catch (error) {
         console.error('Erro ao buscar conexões ativas:', error);
@@ -78,7 +87,7 @@ const useActiveConnections = () => {
   return { connections, loading };
 };
 
-export const MaturadorTab = () => {
+export const EnhancedMaturadorTab = () => {
   const { connections, loading } = useActiveConnections();
   const [config, setConfig] = useState<MaturadorConfig>({
     isRunning: false,
