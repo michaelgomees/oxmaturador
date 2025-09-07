@@ -5,9 +5,8 @@ import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
-import { Separator } from "@/components/ui/separator";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Play, Pause, Square, Users, MessageCircle, ArrowRight, Settings, Activity, Wifi, WifiOff } from "lucide-react";
+import { Play, Pause, Square, Users, MessageCircle, ArrowRight, Settings, Activity, Wifi } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 
 interface ChipPair {
@@ -17,7 +16,7 @@ interface ChipPair {
   isActive: boolean;
   messagesExchanged: number;
   lastActivity: string;
-  status: 'running' | 'paused' | 'stopped';
+  status: "running" | "paused" | "stopped";
 }
 
 interface MaturadorConfig {
@@ -30,12 +29,12 @@ interface MaturadorConfig {
 interface ActiveConnection {
   id: string;
   name: string;
-  status: 'connected' | 'disconnected';
+  status: "connected" | "disconnected";
   lastSeen: string;
   platform: string;
 }
 
-// Hook para buscar conexões ativas do banco de dados
+// Hook para buscar conexões ativas (mock por enquanto)
 const useActiveConnections = () => {
   const [connections, setConnections] = useState<ActiveConnection[]>([]);
   const [loading, setLoading] = useState(true);
@@ -43,15 +42,27 @@ const useActiveConnections = () => {
   useEffect(() => {
     const fetchActiveConnections = async () => {
       try {
-        // TODO: Substituir por query real do Supabase quando conectado
-        // const { data } = await supabase.from('connections').select('*').eq('status', 'connected');
-        
-        // Dados reais do banco - sem dados de demonstração
-        const mockConnections: ActiveConnection[] = [];
-        
+        // TODO: Substituir pelo backend real
+        const mockConnections: ActiveConnection[] = [
+          {
+            id: "1",
+            name: "Chip 1",
+            status: "connected",
+            lastSeen: new Date().toISOString(),
+            platform: "whatsapp",
+          },
+          {
+            id: "2",
+            name: "Chip 2",
+            status: "connected",
+            lastSeen: new Date().toISOString(),
+            platform: "telegram",
+          },
+        ];
+
         setConnections(mockConnections);
       } catch (error) {
-        console.error('Erro ao buscar conexões ativas:', error);
+        console.error("Erro ao buscar conexões ativas:", error);
         setConnections([]);
       } finally {
         setLoading(false);
@@ -59,8 +70,6 @@ const useActiveConnections = () => {
     };
 
     fetchActiveConnections();
-    
-    // Atualizar a cada 30 segundos
     const interval = setInterval(fetchActiveConnections, 30000);
     return () => clearInterval(interval);
   }, []);
@@ -74,19 +83,19 @@ export const MaturadorTab = () => {
     isRunning: false,
     selectedPairs: [],
     maxMessagesPerSession: 10,
-    useBasePrompt: true
+    useBasePrompt: true,
   });
-  
-  const [newPair, setNewPair] = useState({
-    chip1: '',
-    chip2: ''
+
+  const [newPair, setNewPair] = useState<{ chip1: string | null; chip2: string | null }>({
+    chip1: null,
+    chip2: null,
   });
-  
+
   const { toast } = useToast();
 
   // Carregar configuração do localStorage
   useEffect(() => {
-    const savedConfig = localStorage.getItem('ox-maturador-config');
+    const savedConfig = localStorage.getItem("ox-maturador-config");
     if (savedConfig) {
       setConfig(JSON.parse(savedConfig));
     }
@@ -95,7 +104,7 @@ export const MaturadorTab = () => {
   // Salvar configuração no localStorage
   const saveConfig = (newConfig: MaturadorConfig) => {
     setConfig(newConfig);
-    localStorage.setItem('ox-maturador-config', JSON.stringify(newConfig));
+    localStorage.setItem("ox-maturador-config", JSON.stringify(newConfig));
   };
 
   const handleAddPair = () => {
@@ -103,14 +112,13 @@ export const MaturadorTab = () => {
       toast({
         title: "Erro",
         description: "Selecione dois chips diferentes para criar a conversa.",
-        variant: "destructive"
+        variant: "destructive",
       });
       return;
     }
 
-    // Verificar se o par já existe
     const pairExists = config.selectedPairs.some(
-      pair => 
+      (pair) =>
         (pair.chip1 === newPair.chip1 && pair.chip2 === newPair.chip2) ||
         (pair.chip1 === newPair.chip2 && pair.chip2 === newPair.chip1)
     );
@@ -119,7 +127,7 @@ export const MaturadorTab = () => {
       toast({
         title: "Erro",
         description: "Esta dupla de chips já foi configurada.",
-        variant: "destructive"
+        variant: "destructive",
       });
       return;
     }
@@ -131,48 +139,48 @@ export const MaturadorTab = () => {
       isActive: true,
       messagesExchanged: 0,
       lastActivity: new Date().toISOString(),
-      status: 'stopped'
+      status: "stopped",
     };
 
     const updatedConfig = {
       ...config,
-      selectedPairs: [...config.selectedPairs, pair]
+      selectedPairs: [...config.selectedPairs, pair],
     };
-    
+
     saveConfig(updatedConfig);
-    setNewPair({ chip1: '', chip2: '' });
-    
+    setNewPair({ chip1: null, chip2: null });
+
     toast({
       title: "Par adicionado",
-      description: `Conversa entre ${newPair.chip1} e ${newPair.chip2} configurada.`
+      description: `Conversa entre ${newPair.chip1} e ${newPair.chip2} configurada.`,
     });
   };
 
   const handleRemovePair = (pairId: string) => {
     const updatedConfig = {
       ...config,
-      selectedPairs: config.selectedPairs.filter(pair => pair.id !== pairId)
+      selectedPairs: config.selectedPairs.filter((pair) => pair.id !== pairId),
     };
     saveConfig(updatedConfig);
-    
+
     toast({
       title: "Par removido",
-      description: "Configuração de conversa removida."
+      description: "Configuração de conversa removida.",
     });
   };
 
   const handleTogglePair = (pairId: string) => {
-    const updatedPairs = config.selectedPairs.map(pair => 
-      pair.id === pairId 
-        ? { 
-            ...pair, 
+    const updatedPairs = config.selectedPairs.map((pair) =>
+      pair.id === pairId
+        ? {
+            ...pair,
             isActive: !pair.isActive,
-            status: (!pair.isActive ? 'running' : 'paused') as ChipPair['status'],
-            lastActivity: new Date().toISOString()
+            status: (!pair.isActive ? "running" : "paused") as ChipPair["status"],
+            lastActivity: new Date().toISOString(),
           }
         : pair
     );
-    
+
     const updatedConfig = { ...config, selectedPairs: updatedPairs };
     saveConfig(updatedConfig);
   };
@@ -182,17 +190,17 @@ export const MaturadorTab = () => {
       toast({
         title: "Erro",
         description: "Configure pelo menos uma dupla de chips para iniciar o maturador.",
-        variant: "destructive"
+        variant: "destructive",
       });
       return;
     }
 
-    const activePairs = config.selectedPairs.filter(pair => pair.isActive);
+    const activePairs = config.selectedPairs.filter((pair) => pair.isActive);
     if (activePairs.length === 0) {
       toast({
-        title: "Erro", 
+        title: "Erro",
         description: "Ative pelo menos uma dupla de chips para iniciar o maturador.",
-        variant: "destructive"
+        variant: "destructive",
       });
       return;
     }
@@ -200,37 +208,50 @@ export const MaturadorTab = () => {
     const updatedConfig = {
       ...config,
       isRunning: !config.isRunning,
-      selectedPairs: config.selectedPairs.map(pair => ({
+      selectedPairs: config.selectedPairs.map((pair) => ({
         ...pair,
-        status: (config.isRunning ? 'stopped' : (pair.isActive ? 'running' : 'paused')) as ChipPair['status'],
-        lastActivity: new Date().toISOString()
-      }))
+        status: config.isRunning
+          ? "stopped"
+          : pair.isActive
+          ? "running"
+          : "paused",
+        lastActivity: new Date().toISOString(),
+      })),
     };
-    
+
     saveConfig(updatedConfig);
-    
+
     toast({
       title: config.isRunning ? "Maturador pausado" : "Maturador iniciado",
-      description: config.isRunning 
-        ? "Todas as conversas foram pausadas." 
-        : `Iniciando conversas entre ${activePairs.length} dupla(s) de chips.`
+      description: config.isRunning
+        ? "Todas as conversas foram pausadas."
+        : `Iniciando conversas entre ${activePairs.length} dupla(s) de chips.`,
     });
   };
 
-  const getStatusBadge = (status: ChipPair['status']) => {
+  const getStatusBadge = (status: ChipPair["status"]) => {
     switch (status) {
-      case 'running':
-        return <Badge className="bg-green-500/20 text-green-400 border-green-500/30">Em Execução</Badge>;
-      case 'paused':
-        return <Badge className="bg-yellow-500/20 text-yellow-400 border-yellow-500/30">Pausado</Badge>;
+      case "running":
+        return (
+          <Badge className="bg-green-500/20 text-green-400 border-green-500/30">
+            Em Execução
+          </Badge>
+        );
+      case "paused":
+        return (
+          <Badge className="bg-yellow-500/20 text-yellow-400 border-yellow-500/30">
+            Pausado
+          </Badge>
+        );
       default:
         return <Badge variant="secondary">Parado</Badge>;
     }
   };
 
-  const getAvailableChipsForSecond = (selectedFirst: string) => {
-    return connections.filter(connection => 
-      connection.status === 'connected' && connection.name !== selectedFirst
+  const getAvailableChipsForSecond = (selectedFirst: string | null) => {
+    return connections.filter(
+      (connection) =>
+        connection.status === "connected" && connection.name !== selectedFirst
     );
   };
 
@@ -241,18 +262,16 @@ export const MaturadorTab = () => {
         <div>
           <h2 className="text-2xl font-bold">Iniciar Maturador</h2>
           <p className="text-muted-foreground">
-            Configure conversas automáticas entre conexões ativas para simular diálogos naturais
+            Configure conversas automáticas entre conexões ativas para simular
+            diálogos naturais
           </p>
         </div>
         <div className="flex items-center gap-4">
           <div className="flex items-center gap-2">
-            <Switch
-              checked={config.isRunning}
-              onCheckedChange={handleStartMaturador}
-            />
-            <Label>Maturador {config.isRunning ? 'Ativo' : 'Inativo'}</Label>
+            <Switch checked={config.isRunning} onCheckedChange={handleStartMaturador} />
+            <Label>Maturador {config.isRunning ? "Ativo" : "Inativo"}</Label>
           </div>
-          <Button 
+          <Button
             onClick={handleStartMaturador}
             variant={config.isRunning ? "destructive" : "default"}
           >
@@ -287,7 +306,9 @@ export const MaturadorTab = () => {
             <Activity className="w-8 h-8 text-green-500" />
             <div>
               <p className="text-sm text-muted-foreground">Duplas Ativas</p>
-              <p className="text-2xl font-bold">{config.selectedPairs.filter(p => p.status === 'running').length}</p>
+              <p className="text-2xl font-bold">
+                {config.selectedPairs.filter((p) => p.status === "running").length}
+              </p>
             </div>
           </CardContent>
         </Card>
@@ -296,7 +317,12 @@ export const MaturadorTab = () => {
             <MessageCircle className="w-8 h-8 text-secondary" />
             <div>
               <p className="text-sm text-muted-foreground">Mensagens Trocadas</p>
-              <p className="text-2xl font-bold">{config.selectedPairs.reduce((acc, pair) => acc + pair.messagesExchanged, 0)}</p>
+              <p className="text-2xl font-bold">
+                {config.selectedPairs.reduce(
+                  (acc, pair) => acc + pair.messagesExchanged,
+                  0
+                )}
+              </p>
             </div>
           </CardContent>
         </Card>
@@ -305,7 +331,7 @@ export const MaturadorTab = () => {
             <Settings className="w-8 h-8 text-accent" />
             <div>
               <p className="text-sm text-muted-foreground">Status Sistema</p>
-              <p className="text-2xl font-bold">{config.isRunning ? 'ON' : 'OFF'}</p>
+              <p className="text-2xl font-bold">{config.isRunning ? "ON" : "OFF"}</p>
             </div>
           </CardContent>
         </Card>
@@ -324,42 +350,55 @@ export const MaturadorTab = () => {
             <div className="space-y-4">
               <div className="space-y-2">
                 <Label>Primeiro Chip</Label>
-                <Select 
-                  value={newPair.chip1} 
-                  onValueChange={(value) => setNewPair(prev => ({ ...prev, chip1: value }))}
+                <Select
+                  value={newPair.chip1 ?? undefined}
+                  onValueChange={(value) =>
+                    setNewPair((prev) => ({ ...prev, chip1: value }))
+                  }
                 >
                   <SelectTrigger>
                     <SelectValue placeholder="Selecione o primeiro chip" />
                   </SelectTrigger>
                   <SelectContent>
                     {loading ? (
-                      <SelectItem value="loading" disabled>Carregando conexões...</SelectItem>
-                    ) : connections.filter(conn => conn.status === 'connected').length === 0 ? (
-                      <SelectItem value="no-connections" disabled>Nenhuma conexão ativa</SelectItem>
+                      <SelectItem value="loading" disabled>
+                        Carregando conexões...
+                      </SelectItem>
+                    ) : connections.filter((c) => c.status === "connected").length ===
+                      0 ? (
+                      <SelectItem value="no-connections" disabled>
+                        Nenhuma conexão ativa
+                      </SelectItem>
                     ) : (
-                      connections.filter(conn => conn.status === 'connected').map(connection => (
-                        <SelectItem key={connection.id} value={connection.name}>
-                          <div className="flex items-center gap-2">
-                            <Wifi className="w-3 h-3 text-green-500" />
-                            {connection.name}
-                            <Badge variant="outline" className="text-xs">{connection.platform}</Badge>
-                          </div>
-                        </SelectItem>
-                      ))
+                      connections
+                        .filter((c) => c.status === "connected")
+                        .map((connection) => (
+                          <SelectItem key={connection.id} value={connection.name}>
+                            <div className="flex items-center gap-2">
+                              <Wifi className="w-3 h-3 text-green-500" />
+                              {connection.name}
+                              <Badge variant="outline" className="text-xs">
+                                {connection.platform}
+                              </Badge>
+                            </div>
+                          </SelectItem>
+                        ))
                     )}
                   </SelectContent>
                 </Select>
               </div>
-              
+
               <div className="flex justify-center">
                 <ArrowRight className="w-6 h-6 text-muted-foreground" />
               </div>
-              
+
               <div className="space-y-2">
                 <Label>Segundo Chip</Label>
-                <Select 
-                  value={newPair.chip2} 
-                  onValueChange={(value) => setNewPair(prev => ({ ...prev, chip2: value }))}
+                <Select
+                  value={newPair.chip2 ?? undefined}
+                  onValueChange={(value) =>
+                    setNewPair((prev) => ({ ...prev, chip2: value }))
+                  }
                   disabled={!newPair.chip1}
                 >
                   <SelectTrigger>
@@ -367,16 +406,22 @@ export const MaturadorTab = () => {
                   </SelectTrigger>
                   <SelectContent>
                     {loading ? (
-                      <SelectItem value="loading" disabled>Carregando conexões...</SelectItem>
+                      <SelectItem value="loading" disabled>
+                        Carregando conexões...
+                      </SelectItem>
                     ) : getAvailableChipsForSecond(newPair.chip1).length === 0 ? (
-                      <SelectItem value="no-available" disabled>Nenhuma conexão disponível</SelectItem>
+                      <SelectItem value="no-available" disabled>
+                        Nenhuma conexão disponível
+                      </SelectItem>
                     ) : (
-                      getAvailableChipsForSecond(newPair.chip1).map(connection => (
+                      getAvailableChipsForSecond(newPair.chip1).map((connection) => (
                         <SelectItem key={connection.id} value={connection.name}>
                           <div className="flex items-center gap-2">
                             <Wifi className="w-3 h-3 text-green-500" />
                             {connection.name}
-                            <Badge variant="outline" className="text-xs">{connection.platform}</Badge>
+                            <Badge variant="outline" className="text-xs">
+                              {connection.platform}
+                            </Badge>
                           </div>
                         </SelectItem>
                       ))
@@ -385,8 +430,8 @@ export const MaturadorTab = () => {
                 </Select>
               </div>
             </div>
-            
-            <Button 
+
+            <Button
               onClick={handleAddPair}
               disabled={!newPair.chip1 || !newPair.chip2}
               className="w-full"
@@ -406,13 +451,16 @@ export const MaturadorTab = () => {
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
-            {/* Configuração de intervalo removida - será controlada via prompt */}
-            
             <div className="space-y-2">
               <Label>Máximo de mensagens por sessão</Label>
-              <Select 
-                value={config.maxMessagesPerSession.toString()} 
-                onValueChange={(value) => saveConfig({ ...config, maxMessagesPerSession: parseInt(value) })}
+              <Select
+                value={config.maxMessagesPerSession.toString()}
+                onValueChange={(value) =>
+                  saveConfig({
+                    ...config,
+                    maxMessagesPerSession: parseInt(value),
+                  })
+                }
               >
                 <SelectTrigger>
                   <SelectValue />
@@ -425,11 +473,13 @@ export const MaturadorTab = () => {
                 </SelectContent>
               </Select>
             </div>
-            
+
             <div className="flex items-center space-x-2">
               <Switch
                 checked={config.useBasePrompt}
-                onCheckedChange={(checked) => saveConfig({ ...config, useBasePrompt: checked })}
+                onCheckedChange={(checked) =>
+                  saveConfig({ ...config, useBasePrompt: checked })
+                }
               />
               <Label>Usar prompt base das APIs de IA</Label>
             </div>
@@ -469,50 +519,10 @@ export const MaturadorTab = () => {
                           </div>
                           {getStatusBadge(pair.status)}
                         </div>
-                        
+
                         <div className="flex items-center gap-2">
                           <div className="text-right text-sm">
-                            <p className="font-medium">{pair.messagesExchanged} mensagens</p>
-                            <p className="text-xs text-muted-foreground">
-                              {new Date(pair.lastActivity).toLocaleTimeString('pt-BR')}
+                            <p className="font-medium">
+                              {pair.messagesExchanged} mensagens
                             </p>
-                          </div>
-                          
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() => handleTogglePair(pair.id)}
-                          >
-                            {pair.isActive ? (
-                              <>
-                                <Pause className="w-4 h-4 mr-2" />
-                                Pausar
-                              </>
-                            ) : (
-                              <>
-                                <Play className="w-4 h-4 mr-2" />
-                                Ativar
-                              </>
-                            )}
-                          </Button>
-                          
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() => handleRemovePair(pair.id)}
-                          >
-                            Remover
-                          </Button>
-                        </div>
-                      </div>
-                    </CardContent>
-                  </Card>
-                ))}
-              </div>
-            </ScrollArea>
-          )}
-        </CardContent>
-      </Card>
-    </div>
-  );
-};
+                            <p className="
