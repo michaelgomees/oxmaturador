@@ -7,9 +7,9 @@ import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Play, Pause, Square, Users, MessageCircle, ArrowRight, Settings, Activity } from "lucide-react";
+import { Play, Pause, Square, Users, MessageCircle, ArrowRight, Settings, Activity, Wifi } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
-import { getConexoesAtivas } from "@/lib/queries";
+import api from "@/lib/api"; // Importe a instância da sua API
 
 interface ChipPair {
   id: string;
@@ -29,7 +29,57 @@ interface MaturadorConfig {
   useBasePrompt: boolean;
 }
 
+interface ActiveConnection {
+  id: string;
+  name: string;
+  status: 'connected' | 'disconnected';
+  lastSeen: string;
+  platform: string;
+}
+
+// Hook para buscar conexões ativas da API
+const useActiveConnections = () => {
+  const [connections, setConnections] = useState<ActiveConnection[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const fetchActiveConnections = async () => {
+      try {
+        // Substituído o mock data pela chamada real da API
+        const response = await api.get('/connections/active');
+        const data = response.data;
+        
+        // Mapeia os dados da API para o formato esperado pela interface
+        const formattedConnections: ActiveConnection[] = data.map((conn: any) => ({
+          id: conn.fid, // Usa fid como id, conforme a API anterior
+          name: conn.nome, // Usa nome como name, conforme a API anterior
+          status: conn.status,
+          lastSeen: conn.lastSeen,
+          platform: conn.platform
+        }));
+
+        setConnections(formattedConnections);
+
+      } catch (error) {
+        console.error('Erro ao buscar conexões ativas:', error);
+        setConnections([]);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchActiveConnections();
+    
+    // Atualizar a cada 30 segundos
+    const interval = setInterval(fetchActiveConnections, 30000);
+    return () => clearInterval(interval);
+  }, []);
+
+  return { connections, loading };
+};
+
 export const MaturadorTab = () => {
+  const { connections, loading } = useActiveConnections();
   const [config, setConfig] = useState<MaturadorConfig>({
     isRunning: false,
     selectedPairs: [],
@@ -43,22 +93,7 @@ export const MaturadorTab = () => {
     chip2: ''
   });
   
-  const [availableChips, setAvailableChips] = useState<{ fid: string; nome: string }[]>([]);
-  
   const { toast } = useToast();
-
-  // Carregar dados de chips dinâmicos
-  useEffect(() => {
-    async function loadChips() {
-      try {
-        const chips = await getConexoesAtivas();
-        setAvailableChips(chips);
-      } catch (error) {
-        console.error("Falha ao carregar os chips:", error);
-      }
-    }
-    loadChips();
-  }, []);
 
   // Carregar configuração do localStorage
   useEffect(() => {
@@ -205,7 +240,9 @@ export const MaturadorTab = () => {
   };
 
   const getAvailableChipsForSecond = (selectedFirst: string) => {
-    return availableChips.filter(chip => chip.nome !== selectedFirst);
+    return connections.filter(connection => 
+      connection.status === 'connected' && connection.name !== selectedFirst
+    );
   };
 
   return (
@@ -215,7 +252,7 @@ export const MaturadorTab = () => {
         <div>
           <h2 className="text-2xl font-bold">Iniciar Maturador</h2>
           <p className="text-muted-foreground">
-            Configure conversas automáticas entre chips para simular diálogos naturais
+            Configure conversas automáticas entre conexões ativas para simular diálogos naturais
           </p>
         </div>
         <div className="flex items-center gap-4">
@@ -291,7 +328,7 @@ export const MaturadorTab = () => {
           <CardHeader>
             <CardTitle>Configurar Nova Dupla</CardTitle>
             <CardDescription>
-              Selecione dois chips que irão conversar entre si
+              Selecione duas conexões ativas que irão conversar entre si
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
@@ -306,11 +343,21 @@ export const MaturadorTab = () => {
                     <SelectValue placeholder="Selecione o primeiro chip" />
                   </SelectTrigger>
                   <SelectContent>
-                    {availableChips.map(chip => (
-                      <SelectItem key={chip.fid} value={chip.nome}>
-                        {chip.nome}
-                      </SelectItem>
-                    ))}
+                    {loading ? (
+                      <SelectItem value="" disabled>Carregando conexões...</SelectItem>
+                    ) : connections.filter(conn => conn.status === 'connected').length === 0 ? (
+                      <SelectItem value="" disabled>Nenhuma conexão ativa</SelectItem>
+                    ) : (
+                      connections.filter(conn => conn.status === 'connected').map(connection => (
+                        <SelectItem key={connection.id} value={connection.name}>
+                          <div className="flex items-center gap-2">
+                            <Wifi className="w-3 h-3 text-green-500" />
+                            {connection.name}
+                            <Badge variant="outline" className="text-xs">{connection.platform}</Badge>
+                          </div>
+                        </SelectItem>
+                      ))
+                    )}
                   </SelectContent>
                 </Select>
               </div>
@@ -330,11 +377,21 @@ export const MaturadorTab = () => {
                     <SelectValue placeholder="Selecione o segundo chip" />
                   </SelectTrigger>
                   <SelectContent>
-                    {getAvailableChipsForSecond(newPair.chip1).map(chip => (
-                      <SelectItem key={chip.fid} value={chip.nome}>
-                        {chip.nome}
-                      </SelectItem>
-                    ))}
+                    {loading ? (
+                      <SelectItem value="" disabled>Carregando conexões...</SelectItem>
+                    ) : getAvailableChipsForSecond(newPair.chip1).length === 0 ? (
+                      <SelectItem value="" disabled>Nenhuma conexão disponível</SelectItem>
+                    ) : (
+                      getAvailableChipsForSecond(newPair.chip1).map(connection => (
+                        <SelectItem key={connection.id} value={connection.name}>
+                          <div className="flex items-center gap-2">
+                            <Wifi className="w-3 h-3 text-green-500" />
+                            {connection.name}
+                            <Badge variant="outline" className="text-xs">{connection.platform}</Badge>
+                          </div>
+                        </SelectItem>
+                      ))
+                    )}
                   </SelectContent>
                 </Select>
               </div>
