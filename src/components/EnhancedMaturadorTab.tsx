@@ -44,27 +44,19 @@ const useActiveConnections = () => {
   const fetchConnections = async () => {
     try {
       const response = await api.get("/connections/active");
-      setConnections(response.data);
+      const data = response.data;
+      
+      // Garante que sempre seja um array
+      if (Array.isArray(data)) {
+        setConnections(data);
+      } else {
+        console.warn("API retornou dados em formato inválido, usando array vazio");
+        setConnections([]);
+      }
     } catch (error) {
       console.error("Erro ao buscar conexões ativas:", error);
-
-      // 🔹 Mock para não quebrar caso API retorne 404
-      setConnections([
-        {
-          id: "1",
-          name: "Chip 1",
-          status: "connected",
-          lastSeen: new Date().toISOString(),
-          platform: "WhatsApp",
-        },
-        {
-          id: "2",
-          name: "Chip 2",
-          status: "connected",
-          lastSeen: new Date().toISOString(),
-          platform: "Telegram",
-        },
-      ]);
+      // Em caso de erro, retorna array vazio
+      setConnections([]);
     } finally {
       setLoading(false);
     }
