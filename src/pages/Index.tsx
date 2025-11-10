@@ -15,7 +15,7 @@ import { useConnections } from "@/hooks/useConnections";
 import { APIsTab } from "@/components/APIsTab";
 import { PromptsTab } from "@/components/PromptsTab";
 import { DadosTab } from "@/components/DadosTab";
-import { EnhancedMaturadorTab } from "@/components/EnhancedMaturadorTab";
+import EnhancedMaturadorTab from "@/components/EnhancedMaturadorTab";
 
 const Index = () => {
   const [selectedConnection, setSelectedConnection] = useState<string | null>(null);

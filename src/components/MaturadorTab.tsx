@@ -162,7 +162,7 @@ export const MaturadorTab = () => {
         ? {
             ...p,
             isActive: !p.isActive,
-            status: !p.isActive ? "running" : "paused",
+            status: (!p.isActive ? "running" : "paused") as "running" | "paused" | "stopped",
             lastActivity: new Date().toISOString(),
           }
         : p
@@ -194,11 +194,11 @@ export const MaturadorTab = () => {
       isRunning: !config.isRunning,
       selectedPairs: config.selectedPairs.map((p) => ({
         ...p,
-        status: config.isRunning
+        status: (config.isRunning
           ? "stopped"
           : p.isActive
           ? "running"
-          : "paused",
+          : "paused") as "running" | "paused" | "stopped",
         lastActivity: new Date().toISOString(),
       })),
     };
